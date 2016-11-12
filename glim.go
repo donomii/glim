@@ -3,11 +3,12 @@ package glim
 
 import "math"
 import (
+    "bytes"
 	"strings"
 	"unicode"
 	"unicode/utf8"
 	"github.com/kardianos/osext"
-	//sysFont "golang.org/x/mobile/exp/font"
+	sysFont "golang.org/x/mobile/exp/font"
 	"io/ioutil"
 	//"bytes"
 	"fmt"
@@ -28,10 +29,6 @@ import (
 
 type Thunk func()
 
-var (
-	rtt_frameBuff gl.Framebuffer
-	rtt_tex       gl.Texture
-)
 
 func ScreenSize(glctx gl.Context) (int, int) {
     outbuff := []int32{0,0,0,0}
@@ -87,7 +84,7 @@ func CopyScreen(glctx gl.Context, clientWidth, clientHeight int) []byte {
 	return buff
 }
 
-func CopyFrameBuff(glctx gl.Context, clientWidth, clientHeight int) []byte {
+func CopyFrameBuff(glctx gl.Context, rtt_frameBuff gl.Framebuffer, clientWidth, clientHeight int) []byte {
 	buff := make([]byte, clientWidth*clientHeight*4, clientWidth*clientHeight*4)
 	//fmt.Printf("reading pixels: ")
 	glctx.BindFramebuffer(gl.FRAMEBUFFER, rtt_frameBuff)
@@ -121,7 +118,7 @@ func SaveBuff(texWidth, texHeight uint, buff []byte, filename string) {
 	png.Encode(f, m)
 }
 
-func Rtt(glctx gl.Context, texWidth, texHeight int, program gl.Program, thunk Thunk) {
+func Rtt(glctx gl.Context, rtt_frameBuff gl.Framebuffer, rtt_tex gl.Texture,  texWidth, texHeight int, program gl.Program, thunk Thunk) {
 	glctx.BindFramebuffer(gl.FRAMEBUFFER, rtt_frameBuff)
 	glctx.Viewport(0, 0, texWidth, texHeight)
 	glctx.ActiveTexture(gl.TEXTURE0)
@@ -142,11 +139,13 @@ func Rtt(glctx gl.Context, texWidth, texHeight int, program gl.Program, thunk Th
 	thunk()
 
 	glctx.Flush()
+    glctx.GenerateMipmap(gl.TEXTURE_2D)
 
-	buff := CopyFrameBuff(glctx, texWidth, texHeight)
+	buff := CopyFrameBuff(glctx, rtt_frameBuff, texWidth, texHeight)
 	SaveBuff(uint(texWidth), uint(texHeight), buff, "x.png")
 	glctx.BindTexture(gl.TEXTURE_2D, gl.Texture{0})
 	glctx.BindFramebuffer(gl.FRAMEBUFFER, gl.Framebuffer{0})
+    glctx.BindFramebuffer(gl.FRAMEBUFFER, gl.Framebuffer{0})
 	log.Println("Finished Rtt")
 	fmt.Printf("done \n")
 }
@@ -171,9 +170,9 @@ func String2Tex(glctx gl.Context, str string, tSize float64, glTex gl.Texture) {
 
 	img, _ := DrawStringRGBA(tSize, color.RGBA{255, 255, 255, 255}, str)
 	SaveImage(img, "texttest.png")
-	w := 128 //img.Bounds().Max.X  //FIXME
+	w := 256 //img.Bounds().Max.X  //FIXME
 	buff := PaintTexture(img, nil, int(w))
-	DumpBuff(buff, uint(w), uint(w))
+	//DumpBuff(buff, uint(w), uint(w))
 	UploadTex(glctx, glTex, w, w, buff)
 }
 
@@ -292,35 +291,26 @@ func LoadFont(fileName string) *truetype.Font {
         return im
     }
 
-	//fontBytes := sysFont.Monospace()
 	//fontBytes := sysFont.Default()
-	//f := bytes.NewReader(fontBytes)
 
 	var f io.Reader
-	if len(fileName) <= 0 {
-		folderPath, err := osext.ExecutableFolder()
-		if err != nil {
-			log.Fatal(err)
-		}
-		file, err := os.Open(fmt.Sprintf("%v%v%v", folderPath, string(os.PathSeparator), "f1.txt"))
-		if err != nil {
-			log.Fatal(err)
-		}
-		defer file.Close()
-		f = file
-	} else {
-		//log.Println(fileName)
-		folderPath, err := osext.ExecutableFolder()
-		if err != nil {
-			log.Fatal(err)
-		}
-		file, err := os.Open(fmt.Sprintf("%v%v%v", folderPath, string(os.PathSeparator), fileName))
-		if err != nil {
-			log.Fatal(err)
-		}
-		defer file.Close()
-		f = file
-
+    folderPath, err := osext.ExecutableFolder()
+    if err != nil {
+        log.Printf("Could not get exec path, falling back to system font\n", )
+        fontBytes := sysFont.Monospace()
+        f = bytes.NewReader(fontBytes)
+    } else {
+        //log.Println(fileName)
+        file, err := os.Open(fmt.Sprintf("%v%v%v", folderPath, string(os.PathSeparator), fileName))
+        if err != nil {
+            //log.Fatal(err)
+            log.Printf("Could not open %v, falling back to system font\n", fmt.Sprintf("%v%v%v", folderPath, string(os.PathSeparator), fileName))
+            fontBytes := sysFont.Monospace()
+            f = bytes.NewReader(fontBytes)
+        } else {
+            defer file.Close()
+            f = file
+        }
 	}
 	fontBytes, err := ioutil.ReadAll(f)
 	if err != nil {
@@ -437,8 +427,9 @@ func GetGlyphSize(size float64, str string) (int, int) {
 
 func RenderPara(f *FormatParams, orig_xpos, orig_ypos, maxX, maxY int, u8Pix []uint8, text string, transparent bool, doDraw bool, showCursor bool) {
     vert := f.Vertical
-    clientWidth := maxX-orig_xpos
-    clientHeight := maxY-orig_ypos
+    clientWidth := maxX
+    clientHeight := maxY
+    orig_colour := f.Colour
 	if f.TailBuffer {
 		//f.Cursor = len(text)
 		//scrollToCursor(f, text)  //Use pageup function, once it is fast enough
@@ -457,8 +448,8 @@ func RenderPara(f *FormatParams, orig_xpos, orig_ypos, maxX, maxY int, u8Pix []u
         xpos = maxX
     }
     gx, gy := GetGlyphSize(f.FontSize, text)
-    pos := MoveInBounds(Vec2{xpos, ypos}, Vec2{orig_xpos, orig_ypos}, Vec2{maxX-5, maxY}, Vec2{gx, gy}, Vec2{0,1}, Vec2{-1,0})
     //fmt.Printf("Chose position %v, maxX: %v\n", pos, maxX)
+    pos := MoveInBounds(Vec2{xpos, ypos}, Vec2{orig_xpos, orig_ypos}, Vec2{maxX, maxY}, Vec2{gx, gy}, Vec2{0,1}, Vec2{-1,0})
     xpos = pos.x
     ypos = pos.y
 	maxHeight := 0
@@ -472,7 +463,7 @@ func RenderPara(f *FormatParams, orig_xpos, orig_ypos, maxX, maxY int, u8Pix []u
 			continue
 		}
 		if (f.Cursor == i) && doDraw {
-			DrawCursor(xpos, ypos, maxHeight, maxX-orig_xpos, u8Pix)
+			DrawCursor(xpos, ypos, maxHeight, clientWidth, u8Pix)
 		}
 		if i >= len(letters)-1 {
 			continue
@@ -487,7 +478,7 @@ func RenderPara(f *FormatParams, orig_xpos, orig_ypos, maxX, maxY int, u8Pix []u
 			//}
 			f.Colour = &color.RGBA{255, 1, 1, 255}
 		} else {
-			f.Colour = &color.RGBA{1, 32, 1, 255}
+			f.Colour = orig_colour
 		}
 		if (string(text[i]) == " ") || (string(text[i]) == "\n") {
 			f.FontSize = orig_fontSize
@@ -507,7 +498,7 @@ func RenderPara(f *FormatParams, orig_xpos, orig_ypos, maxX, maxY int, u8Pix []u
 			f.Line++
 			f.StartLinePos = i
 			if f.Cursor == i && showCursor {
-				DrawCursor(xpos, ypos, maxHeight, maxX-orig_xpos, u8Pix)
+				DrawCursor(xpos, ypos, maxHeight, clientWidth, u8Pix)
 			}
 		} else {
 			if i >= f.FirstDrawnCharPos {
@@ -530,7 +521,8 @@ func RenderPara(f *FormatParams, orig_xpos, orig_ypos, maxX, maxY int, u8Pix []u
 				//letterWidth := XmaX
 				//letterHeight = letterHeight
 
-				if (xpos+XmaX > maxX) || (xpos<0) {
+				//if (xpos+XmaX > maxX) || (xpos<0) {
+				if (xpos<0) {
 					if vert {
                         f.LastDrawnCharPos = i - 1
                         return
@@ -555,6 +547,9 @@ func RenderPara(f *FormatParams, orig_xpos, orig_ypos, maxX, maxY int, u8Pix []u
                         return
                     }
 				}
+                pos := MoveInBounds(Vec2{xpos, ypos}, Vec2{orig_xpos, orig_ypos}, Vec2{maxX, maxY}, Vec2{XmaX, YmaX}, Vec2{0,1}, Vec2{-1,0})
+                xpos = pos.x
+                ypos = pos.y
 
 				if doDraw {
 					//PasteImg(img, xpos, ypos + ytweak, u8Pix, transparent)
