@@ -424,12 +424,14 @@ func GetGlyphSize(size float64, str string) (int, int) {
 }
 
 
+//This was a bad idea.  Instead of all the if statements, we should just assume everything is left-to-right, top-to-bottom, and then rotate the entire block afterwards (we will also have to rotate the characters around their own center)
+//Arabic will still need special code - better to separate into two completely different routines?
 
 func RenderPara(f *FormatParams, orig_xpos, orig_ypos, maxX, maxY int, u8Pix []uint8, text string, transparent bool, doDraw bool, showCursor bool) {
     vert := f.Vertical
     clientWidth := maxX
     clientHeight := maxY
-    orig_colour := f.Colour
+    //orig_colour := f.Colour
 	if f.TailBuffer {
 		//f.Cursor = len(text)
 		//scrollToCursor(f, text)  //Use pageup function, once it is fast enough
@@ -478,7 +480,8 @@ func RenderPara(f *FormatParams, orig_xpos, orig_ypos, maxX, maxY int, u8Pix []u
 			//}
 			f.Colour = &color.RGBA{255, 1, 1, 255}
 		} else {
-			f.Colour = orig_colour
+			//f.Colour = orig_colour
+			f.Colour = &color.RGBA{1, 1, 1, 255}
 		}
 		if (string(text[i]) == " ") || (string(text[i]) == "\n") {
 			f.FontSize = orig_fontSize
@@ -521,17 +524,23 @@ func RenderPara(f *FormatParams, orig_xpos, orig_ypos, maxX, maxY int, u8Pix []u
 				//letterWidth := XmaX
 				//letterHeight = letterHeight
 
-				//if (xpos+XmaX > maxX) || (xpos<0) {
-				if (xpos<0) {
-					if vert {
+				if vert && (xpos<0) {
+                    if vert {
                         f.LastDrawnCharPos = i - 1
                         return
                     } else {
-                        ypos = ypos + maxHeight
-                        maxHeight = 0
-                        xpos = orig_xpos
-                        f.Line++
-                        f.StartLinePos = i
+                        pos := MoveInBounds(Vec2{xpos, ypos}, Vec2{orig_xpos, orig_ypos}, Vec2{maxX, maxY}, Vec2{gx, gy}, Vec2{0,1}, Vec2{-1,0})
+                        xpos = pos.x
+                        ypos = pos.y
+                    }
+                }
+				if (xpos+XmaX > maxX) {
+                    if !vert {
+                    ypos = ypos + maxHeight
+                    maxHeight = 0
+                    xpos = orig_xpos
+                    f.Line++
+                    f.StartLinePos = i
                     }
 				}
 
