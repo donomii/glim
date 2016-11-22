@@ -427,11 +427,14 @@ func GetGlyphSize(size float64, str string) (int, int) {
 //This was a bad idea.  Instead of all the if statements, we should just assume everything is left-to-right, top-to-bottom, and then rotate the entire block afterwards (we will also have to rotate the characters around their own center)
 //Arabic will still need special code - better to separate into two completely different routines?
 
-func RenderPara(f *FormatParams, orig_xpos, orig_ypos, maxX, maxY int, u8Pix []uint8, text string, transparent bool, doDraw bool, showCursor bool) {
+//Return the cursor position (number of characters from start of text) that is closest to the mouse cursor (cursorX, cursorY)
+
+func RenderPara(f *FormatParams, orig_xpos, orig_ypos, maxX, maxY, clientWidth, clientHeight, cursorX, cursorY int, u8Pix []uint8, text string, transparent bool, doDraw bool, showCursor bool) int {
+    cursorDist := 9999999
+    seekCursorPos := 0
     vert := f.Vertical
-    clientWidth := maxX
-    clientHeight := maxY
-    //orig_colour := f.Colour
+    orig_colour := f.Colour
+    foreGround := f.Colour
 	if f.TailBuffer {
 		//f.Cursor = len(text)
 		//scrollToCursor(f, text)  //Use pageup function, once it is fast enough
@@ -455,6 +458,7 @@ func RenderPara(f *FormatParams, orig_xpos, orig_ypos, maxX, maxY int, u8Pix []u
     xpos = pos.x
     ypos = pos.y
 	maxHeight := 0
+	letterWidth := 100
 	wobblyMode := false
 	if f.Cursor > len(letters) {
 		f.Cursor = len(letters)
@@ -470,6 +474,8 @@ func RenderPara(f *FormatParams, orig_xpos, orig_ypos, maxX, maxY int, u8Pix []u
 		if i >= len(letters)-1 {
 			continue
 		}
+        foreGround = orig_colour
+               
 		if unicode.IsUpper([]rune(v)[0]) {
 			//if i>0 && letters[i-1] == " " {
 			//f.Colour = &color.RGBA{255,0,0,255}
@@ -478,10 +484,7 @@ func RenderPara(f *FormatParams, orig_xpos, orig_ypos, maxX, maxY int, u8Pix []u
 			//} else {
 			//f.Colour = &color.RGBA{1,1,1,255}
 			//}
-			f.Colour = &color.RGBA{255, 1, 1, 255}
-		} else {
-			//f.Colour = orig_colour
-			f.Colour = &color.RGBA{1, 1, 1, 255}
+			foreGround = &color.RGBA{255, 1, 1, 255}
 		}
 		if (string(text[i]) == " ") || (string(text[i]) == "\n") {
 			f.FontSize = orig_fontSize
@@ -509,7 +512,7 @@ func RenderPara(f *FormatParams, orig_xpos, orig_ypos, maxX, maxY int, u8Pix []u
 				if wobblyMode {
 					ytweak = int(math.Sin(float64(xpos)) * 5.0)
 				}
-				img, face := DrawStringRGBA(f.FontSize, *f.Colour, v)
+				img, face := DrawStringRGBA(f.FontSize, *foreGround, v)
 				XmaX, YmaX := img.Bounds().Max.X, img.Bounds().Max.Y
 				imgBytes := img.Pix
 				//imgBytes := Rotate270(XmaX, YmaX, img.Pix)
@@ -517,7 +520,7 @@ func RenderPara(f *FormatParams, orig_xpos, orig_ypos, maxX, maxY int, u8Pix []u
 				fa := *face
 				glyph, _ := utf8.DecodeRuneInString(v)
 				letterWidth_F, _ := fa.GlyphAdvance(glyph)
-				letterWidth := Fixed2int(letterWidth_F)
+				letterWidth = Fixed2int(letterWidth_F)
 				//fuckedRect, _, _ := fa.GlyphBounds(glyph)
 				//letterHeight := fixed2int(fuckedRect.Max.Y)
 				letterHeight := Fixed2int(fa.Metrics().Height)
@@ -527,7 +530,7 @@ func RenderPara(f *FormatParams, orig_xpos, orig_ypos, maxX, maxY int, u8Pix []u
 				if vert && (xpos<0) {
                     if vert {
                         f.LastDrawnCharPos = i - 1
-                        return
+                        return seekCursorPos
                     } else {
                         pos := MoveInBounds(Vec2{xpos, ypos}, Vec2{orig_xpos, orig_ypos}, Vec2{maxX, maxY}, Vec2{gx, gy}, Vec2{0,1}, Vec2{-1,0})
                         xpos = pos.x
@@ -553,7 +556,7 @@ func RenderPara(f *FormatParams, orig_xpos, orig_ypos, maxX, maxY int, u8Pix []u
                         f.StartLinePos = i
                     } else {
                         f.LastDrawnCharPos = i - 1
-                        return
+                        return seekCursorPos
                     }
 				}
                 pos := MoveInBounds(Vec2{xpos, ypos}, Vec2{orig_xpos, orig_ypos}, Vec2{maxX, maxY}, Vec2{XmaX, YmaX}, Vec2{0,1}, Vec2{-1,0})
@@ -580,8 +583,15 @@ func RenderPara(f *FormatParams, orig_xpos, orig_ypos, maxX, maxY int, u8Pix []u
                 }
 			}
 		}
+    d := (cursorX-xpos+letterWidth)*(cursorX-xpos+letterWidth) + (cursorY-ypos-maxHeight/2)*(cursorY-ypos-maxHeight/2)
+    if d<cursorDist {
+        cursorDist = d
+        seekCursorPos = i
+    }
+
 	}
 	SanityCheck(f, text)
+    return seekCursorPos
 }
 
 func MaxI(a, b int) int {
