@@ -331,6 +331,8 @@ type FormatParams struct {
 	Colour            *color.RGBA
 	Line              int
 	Cursor            int
+    SelectStart       int   //Start of the selection box, counted from the start of document
+    SelectEnd         int   //End of the selection box, counted from the start of document
 	StartLinePos      int //Updated during render, holds the closest start of line, including soft line breaks
 	FontSize          float64
 	FirstDrawnCharPos int //The first character to draw on the screen.  Anything before this is ignored
@@ -338,6 +340,10 @@ type FormatParams struct {
 	TailBuffer        bool
 	Outline           bool
 	Vertical          bool
+}
+
+func NewFormatter() *FormatParams{
+    return &FormatParams{&color.RGBA{1,1,1,255},0,0,0,0,0, 36.0,0,0, false, true, true}
 }
 
 func DrawCursor(xpos, ypos, height, clientWidth int, u8Pix []byte) {
@@ -486,6 +492,11 @@ func RenderPara(f *FormatParams, orig_xpos, orig_ypos, maxX, maxY, clientWidth, 
 			//}
 			foreGround = &color.RGBA{255, 1, 1, 255}
 		}
+        if (i>f.SelectStart) && (i<f.SelectEnd) {
+            //fmt.Printf("%v is between %v and %v\n", i , f.SelectStart, f.SelectEnd)
+            foreGround = &color.RGBA{1,255,1,255}
+        }
+        //fmt.Printf("%v: %V\n", i , f)
 		if (string(text[i]) == " ") || (string(text[i]) == "\n") {
 			f.FontSize = orig_fontSize
 			//log.Printf("Oversize end for %v at %v\n", v, i)
