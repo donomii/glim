@@ -3,6 +3,9 @@ package glim
 
 import "math"
 import (
+_   "image/jpeg"
+_   "image/png"
+    "image/draw"
     "bytes"
 	"strings"
 	"unicode"
@@ -38,10 +41,21 @@ func ScreenSize(glctx gl.Context) (int, int) {
     return screenWidth, screenHeight
 }
 
+func LoadImage (path string) ([]byte, int, int) {
+    infile, _ := os.Open(path)
+    defer infile.Close()
+    
+    src, _, _ := image.Decode(infile)
+    rect := src.Bounds()
+    rgba := image.NewNRGBA(rect)
+    draw.Draw(rgba, rect, src, rect.Min, draw.Src)
+    return rgba.Pix, rect.Max.X, rect.Max.Y
+}
+
 func ScreenShot(glctx gl.Context, filename string) {
     screenWidth, screenHeight := ScreenSize(glctx)
 	//log.Printf("Saving width: %v, height: %v\n", screenWidth, screenHeight)
-	SaveBuff(uint(screenWidth), uint(screenHeight), CopyScreen(glctx, int(screenWidth), int(screenHeight)), filename)
+	SaveBuff(screenWidth, screenHeight, CopyScreen(glctx, int(screenWidth), int(screenHeight)), filename)
 }
 
 //Copies an image to a correctly-packed texture data array.
@@ -77,12 +91,63 @@ func PaintTexture(img image.Image, u8Pix []uint8, clientWidth int) []uint8 {
 
 func CopyScreen(glctx gl.Context, clientWidth, clientHeight int) []byte {
 	buff := make([]byte, clientWidth*clientHeight*4, clientWidth*clientHeight*4)
-	//fmt.Printf("reading pixels: ")
+    if clientWidth ==0 || clientHeight ==0 {
+        return buff
+    }
+	//fmt.Printf("reading pixels: %v, %v\n", clientWidth, clientHeight)
 	//glctx.BindFramebuffer(gl.FRAMEBUFFER, rtt_frameBuff)
 	glctx.ReadPixels(buff, 0, 0, clientWidth, clientHeight, gl.RGBA, gl.UNSIGNED_BYTE)
-	glctx.BindFramebuffer(gl.FRAMEBUFFER, gl.Framebuffer{0})
+	//glctx.BindFramebuffer(gl.FRAMEBUFFER, gl.Framebuffer{0})
 	return buff
 }
+
+func CopyScreenToGFormat(glctx gl.Context, clientWidth, clientHeight int) image.Image {
+	buff := CopyScreen(glctx, clientWidth, clientHeight)
+    rect := image.Rectangle{image.Point{0, clientWidth}, image.Point{0, clientHeight}}
+    rgba := image.NewNRGBA(rect)
+    if clientWidth ==0 || clientHeight ==0 {
+        return rgba
+    }
+    rgba.Pix = buff
+	return rgba
+}
+
+func udiff (a,b uint32) uint32{
+    if a>b{
+        return a-b
+    } else {
+        return b-a
+    }
+}
+
+func GDiff (m,m1 image.Image) int64 {
+    bounds := m.Bounds()
+
+    // Calculate a 16-bin histogram for m's red, green, blue and alpha components.
+    //· 
+    // An image's bounds do not necessarily start at (0, 0), so the two loops start
+    // at bounds.Min.Y and bounds.Min.X. Looping over Y first and X second is more
+    // likely to result in better memory access patterns than X first and Y second.
+    //var histogram [4]uint32
+    diff := int64(0)
+    for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
+        for x := bounds.Min.X; x < bounds.Max.X; x++ {
+            r, g, b, _ := m.At(x, y).RGBA()
+            r1, g1, b1, _ := m1.At(x, y).RGBA()
+            diff = diff + int64(Abs32(udiff(r>>8, r1>>8)) + Abs32(udiff(g>>8, g1>>8)) + Abs32(udiff(b>>8, b1>>8)))
+        }
+    }
+    return diff
+}
+
+// Abs32 returns the absolute value of x.· 
+func Abs32(x uint32) uint32 {
+    if x < 0 {
+        return -x
+    }
+    return x
+}
+
 
 func CopyFrameBuff(glctx gl.Context, rtt_frameBuff gl.Framebuffer, clientWidth, clientHeight int) []byte {
 	buff := make([]byte, clientWidth*clientHeight*4, clientWidth*clientHeight*4)
@@ -99,14 +164,12 @@ func SaveImage(m *image.RGBA, filename string) {
 	png.Encode(f, m)
 }
 
-func SaveBuff(texWidth, texHeight uint, buff []byte, filename string) {
-	f, _ := os.OpenFile(filename, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0666)
-	defer f.Close()
+func SaveBuff(texWidth, texHeight int, buff []byte, filename string) {
 	m := image.NewNRGBA(image.Rectangle{image.Point{0, 0}, image.Point{int(texWidth), int(texHeight)}})
 	if buff != nil {
-		//fmt.Printf("readpixels: %V", buff)
-		for y := uint(0); y < texWidth; y++ {
-			for x := uint(0); x < texHeight; x++ {
+		log.Printf("Saving buffer: %v,%v", texWidth, texHeight)
+		for y := 0; y < texHeight; y++ {
+			for x := 0; x < texWidth; x++ {
 				i := (x + y*texWidth) * 4
 				m.Set(int(x), int(texHeight-y), color.NRGBA{uint8(buff[i]), uint8(buff[i+1]), uint8(buff[i+2]), 255})
 				//if buff[i]>0 { fmt.Printf("Found colour\n") }
@@ -115,6 +178,8 @@ func SaveBuff(texWidth, texHeight uint, buff []byte, filename string) {
 			}
 		}
 	}
+	f, _ := os.OpenFile(filename, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0666)
+	defer f.Close()
 	png.Encode(f, m)
 }
 
@@ -142,7 +207,7 @@ func Rtt(glctx gl.Context, rtt_frameBuff gl.Framebuffer, rtt_tex gl.Texture,  te
     glctx.GenerateMipmap(gl.TEXTURE_2D)
 
 	buff := CopyFrameBuff(glctx, rtt_frameBuff, texWidth, texHeight)
-	SaveBuff(uint(texWidth), uint(texHeight), buff, "x.png")
+	SaveBuff(int(texWidth), int(texHeight), buff, "x.png")
 	glctx.BindTexture(gl.TEXTURE_2D, gl.Texture{0})
 	glctx.BindFramebuffer(gl.FRAMEBUFFER, gl.Framebuffer{0})
     glctx.BindFramebuffer(gl.FRAMEBUFFER, gl.Framebuffer{0})
@@ -343,7 +408,7 @@ type FormatParams struct {
 }
 
 func NewFormatter() *FormatParams{
-    return &FormatParams{&color.RGBA{1,1,1,255},0,0,0,0,0, 36.0,0,0, false, true, true}
+    return &FormatParams{&color.RGBA{1,1,1,255},0,0,0,0,0, 36.0,0,0, false, true, false}
 }
 
 func DrawCursor(xpos, ypos, height, clientWidth int, u8Pix []byte) {
@@ -403,7 +468,7 @@ func InBounds(v, min, max, charDim Vec2) bool {
     return true
 }
 func MoveInBounds(v, min, max, charDim, charAdv, linAdv Vec2) (newPos Vec2) {
-    //fmt.Printf("(%v), (%v), (%v), (%v)\n",v, min, max, charDim)
+    //fmt.Printf("pos: (%v), min: (%v), max: (%v), charDim: (%v)\n",v, min, max, charDim)
     if v.x < min.x {
         return MoveInBounds(Vec2{v.x+1, v.y}, min, max, charDim, charAdv, linAdv)
     }
@@ -429,13 +494,18 @@ func GetGlyphSize(size float64, str string) (int, int) {
     return XmaX, YmaX
 }
 
+func copyFormatter(inF *FormatParams) *FormatParams {
+    out := NewFormatter()
+    *out = *inF
+    return out
+}
 
 //This was a bad idea.  Instead of all the if statements, we should just assume everything is left-to-right, top-to-bottom, and then rotate the entire block afterwards (we will also have to rotate the characters around their own center)
 //Arabic will still need special code - better to separate into two completely different routines?
 
 //Return the cursor position (number of characters from start of text) that is closest to the mouse cursor (cursorX, cursorY)
 
-func RenderPara(f *FormatParams, orig_xpos, orig_ypos, maxX, maxY, clientWidth, clientHeight, cursorX, cursorY int, u8Pix []uint8, text string, transparent bool, doDraw bool, showCursor bool) int {
+func RenderPara(f *FormatParams, xpos, ypos, orig_xpos, orig_ypos, maxX, maxY, clientWidth, clientHeight, cursorX, cursorY int, u8Pix []uint8, text string, transparent bool, doDraw bool, showCursor bool) (int, int, int) {
     cursorDist := 9999999
     seekCursorPos := 0
     vert := f.Vertical
@@ -453,8 +523,8 @@ func RenderPara(f *FormatParams, orig_xpos, orig_ypos, maxX, maxY, clientWidth, 
 		f.FontSize = orig_fontSize
 		SanityCheck(f, text)
 	}()
-	xpos := orig_xpos
-	ypos := orig_ypos
+	//xpos := orig_xpos
+	//ypos := orig_ypos
     if vert {
         xpos = maxX
     }
@@ -492,7 +562,17 @@ func RenderPara(f *FormatParams, orig_xpos, orig_ypos, maxX, maxY, clientWidth, 
 			//}
 			foreGround = &color.RGBA{255, 1, 1, 255}
 		}
-        if (i>f.SelectStart) && (i<f.SelectEnd) {
+        if (i>=f.SelectStart) && (i<=f.SelectEnd) {
+            nf := copyFormatter(f)
+            nf.SelectStart = -1
+            nf.SelectEnd = -1
+            if i-1<f.SelectStart {
+                _, xpos, ypos = RenderPara(nf, xpos, ypos, 0, 0, maxX, maxY, clientWidth, clientHeight, cursorX, cursorY, u8Pix, "『", transparent, doDraw, showCursor)
+            }
+            if i+1>f.SelectEnd {
+                _, xpos, ypos = RenderPara(nf, xpos, ypos, 0, 0, maxX, maxY, clientWidth, clientHeight, cursorX, cursorY, u8Pix, "』", transparent, doDraw, showCursor)
+            }
+
             //fmt.Printf("%v is between %v and %v\n", i , f.SelectStart, f.SelectEnd)
             foreGround = &color.RGBA{1,255,1,255}
         }
@@ -541,7 +621,7 @@ func RenderPara(f *FormatParams, orig_xpos, orig_ypos, maxX, maxY, clientWidth, 
 				if vert && (xpos<0) {
                     if vert {
                         f.LastDrawnCharPos = i - 1
-                        return seekCursorPos
+                        return seekCursorPos, xpos, ypos
                     } else {
                         pos := MoveInBounds(Vec2{xpos, ypos}, Vec2{orig_xpos, orig_ypos}, Vec2{maxX, maxY}, Vec2{gx, gy}, Vec2{0,1}, Vec2{-1,0})
                         xpos = pos.x
@@ -567,7 +647,7 @@ func RenderPara(f *FormatParams, orig_xpos, orig_ypos, maxX, maxY, clientWidth, 
                         f.StartLinePos = i
                     } else {
                         f.LastDrawnCharPos = i - 1
-                        return seekCursorPos
+                        return seekCursorPos, xpos, ypos
                     }
 				}
                 pos := MoveInBounds(Vec2{xpos, ypos}, Vec2{orig_xpos, orig_ypos}, Vec2{maxX, maxY}, Vec2{XmaX, YmaX}, Vec2{0,1}, Vec2{-1,0})
@@ -602,7 +682,7 @@ func RenderPara(f *FormatParams, orig_xpos, orig_ypos, maxX, maxY, clientWidth, 
 
 	}
 	SanityCheck(f, text)
-    return seekCursorPos
+    return seekCursorPos, xpos, ypos
 }
 
 func MaxI(a, b int) int {
