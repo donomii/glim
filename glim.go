@@ -1,4 +1,4 @@
-// textures
+// GL Image library.  Routines for handling images and textures in GO OpenGL (especially with the GoMobile framework)
 package glim
 
 import "math"
@@ -32,7 +32,7 @@ _   "image/png"
 
 type Thunk func()
 
-
+//Return screen (or main window) size
 func ScreenSize(glctx gl.Context) (int, int) {
     outbuff := []int32{0,0,0,0}
     glctx.GetIntegerv(outbuff, gl.VIEWPORT)
@@ -41,6 +41,7 @@ func ScreenSize(glctx gl.Context) (int, int) {
     return screenWidth, screenHeight
 }
 
+//Load a image from disk, return a byte array, width, height
 func LoadImage (path string) ([]byte, int, int) {
     infile, _ := os.Open(path)
     defer infile.Close()
@@ -52,13 +53,14 @@ func LoadImage (path string) ([]byte, int, int) {
     return rgba.Pix, rect.Max.X, rect.Max.Y
 }
 
+//Save the currently display to a file on disk
 func ScreenShot(glctx gl.Context, filename string) {
     screenWidth, screenHeight := ScreenSize(glctx)
 	//log.Printf("Saving width: %v, height: %v\n", screenWidth, screenHeight)
 	SaveBuff(screenWidth, screenHeight, CopyScreen(glctx, int(screenWidth), int(screenHeight)), filename)
 }
 
-//Copies an image to a correctly-packed texture data array.
+//Copies an image to a correctly-packed texture data array, where "correctly packed" means a byte array suitable for loading into OpenGL as a 32-bit RGBA byte blob
 //
 //Returns the array, modified in place.  If u8Pix is nil or texWidth is 0, it creates a new texture array and returns that.  Texture is assumed to be square.
 func PaintTexture(img image.Image, u8Pix []uint8, clientWidth int) []uint8 {
@@ -89,6 +91,7 @@ func PaintTexture(img image.Image, u8Pix []uint8, clientWidth int) []uint8 {
 	return u8Pix
 }
 
+//The core of ScreenShot, it copies the display into a RGBA byte array
 func CopyScreen(glctx gl.Context, clientWidth, clientHeight int) []byte {
 	buff := make([]byte, clientWidth*clientHeight*4, clientWidth*clientHeight*4)
     if clientWidth ==0 || clientHeight ==0 {
@@ -123,12 +126,6 @@ func udiff (a,b uint32) uint32{
 func GDiff (m,m1 image.Image) int64 {
     bounds := m.Bounds()
 
-    // Calculate a 16-bin histogram for m's red, green, blue and alpha components.
-    //· 
-    // An image's bounds do not necessarily start at (0, 0), so the two loops start
-    // at bounds.Min.Y and bounds.Min.X. Looping over Y first and X second is more
-    // likely to result in better memory access patterns than X first and Y second.
-    //var histogram [4]uint32
     diff := int64(0)
     for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
         for x := bounds.Min.X; x < bounds.Max.X; x++ {
@@ -140,7 +137,7 @@ func GDiff (m,m1 image.Image) int64 {
     return diff
 }
 
-// Abs32 returns the absolute value of x.· 
+// Abs32 returns the absolute value of x.
 func Abs32(x uint32) uint32 {
     if x < 0 {
         return -x
@@ -148,7 +145,9 @@ func Abs32(x uint32) uint32 {
     return x
 }
 
-
+//Copy frame buffer to 32bit RGBA byte array
+//
+//Only useful if you are using additional framebuffers, this retrieves the contents of a framebuffer of your choice
 func CopyFrameBuff(glctx gl.Context, rtt_frameBuff gl.Framebuffer, clientWidth, clientHeight int) []byte {
 	buff := make([]byte, clientWidth*clientHeight*4, clientWidth*clientHeight*4)
 	//fmt.Printf("reading pixels: ")
@@ -158,12 +157,14 @@ func CopyFrameBuff(glctx gl.Context, rtt_frameBuff gl.Framebuffer, clientWidth, 
 	return buff
 }
 
+//Dumps a go image format thing to disk
 func SaveImage(m *image.RGBA, filename string) {
 	f, _ := os.OpenFile(filename, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0666)
 	defer f.Close()
 	png.Encode(f, m)
 }
 
+//Saves a 32 bit RGBA byte array to a PNG file
 func SaveBuff(texWidth, texHeight int, buff []byte, filename string) {
 	m := image.NewNRGBA(image.Rectangle{image.Point{0, 0}, image.Point{int(texWidth), int(texHeight)}})
 	if buff != nil {
@@ -183,6 +184,14 @@ func SaveBuff(texWidth, texHeight int, buff []byte, filename string) {
 	png.Encode(f, m)
 }
 
+//Render-to-texture
+//
+//Instead of drawing to the screen, draw into a texture.  You must create the framebuffer and texture first, and do whatever setup is required to make them valid.
+//
+//Thunk is a function that takes no args, returns no values, but draws the gl screen
+//
+//Rtt does the correct setup to prepare the texture for drawing, calls thunk() to draw it, then undoes the setup
+//It restores the default frambuffer i.e. frambuffer 0, at the end of the call, make sure you switch to the correct one before doing anymore drawing!
 func Rtt(glctx gl.Context, rtt_frameBuff gl.Framebuffer, rtt_tex gl.Texture,  texWidth, texHeight int, program gl.Program, thunk Thunk) {
 	glctx.BindFramebuffer(gl.FRAMEBUFFER, rtt_frameBuff)
 	glctx.Viewport(0, 0, texWidth, texHeight)
@@ -215,6 +224,7 @@ func Rtt(glctx gl.Context, rtt_frameBuff gl.Framebuffer, rtt_tex gl.Texture,  te
 	fmt.Printf("done \n")
 }
 
+//Prints the contents of a 32bit RGBA byte array as ASCII text
 func DumpBuff(buff []uint8, width, height uint) {
 	log.Printf("Dumping buffer with width, height %v,%v\n", width, height)
 	for y := uint(0); y < height; y++ {
@@ -231,8 +241,9 @@ func DumpBuff(buff []uint8, width, height uint) {
 	}
 }
 
-func String2Tex(glctx gl.Context, str string, tSize float64, glTex gl.Texture) {
 
+//Renders a string into a openGL texture.  No guarantees are made that the text will fit
+func String2Tex(glctx gl.Context, str string, tSize float64, glTex gl.Texture) {
 	img, _ := DrawStringRGBA(tSize, color.RGBA{255, 255, 255, 255}, str)
 	SaveImage(img, "texttest.png")
 	w := 256 //img.Bounds().Max.X  //FIXME
@@ -241,6 +252,7 @@ func String2Tex(glctx gl.Context, str string, tSize float64, glTex gl.Texture) {
 	UploadTex(glctx, glTex, w, w, buff)
 }
 
+//Will attempt to load the contents of a 32bit RGBA byte array into an existing openGL texture.  The texture will be uploaded with the right options for displaying text i.e. clamp_to_edge and filter nearest.
 func UploadTex(glctx gl.Context, glTex gl.Texture, w, h int, buff []uint8) {
 	glctx.BindTexture(gl.TEXTURE_2D, glTex)
 	glctx.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
@@ -253,6 +265,7 @@ func UploadTex(glctx gl.Context, glTex gl.Texture, w, h int, buff []uint8) {
 }
 
 //Creates a new framebuffer and texture, with the texture attached to the frame buffer
+//FIXME: rename to GenTextureAndFramebuffer?
 func GenTextureFromFramebuffer(glctx gl.Context, w, h int) (gl.Framebuffer, gl.Texture) {
 	f := glctx.CreateFramebuffer()
 	glctx.BindFramebuffer(gl.FRAMEBUFFER, f)
@@ -296,6 +309,7 @@ func ClearAllCaches() {
 	fontCache = map[string]*truetype.Font{}
 }
 
+//Creates a texture and draws a string to it
 func DrawStringRGBA(txtSize float64, fontColor color.RGBA, txt string) (*image.RGBA, *font.Face) {
     cacheKey := fmt.Sprintf("%v,%v,%v", txtSize, fontColor, txt)
     if renderCache == nil {
@@ -346,6 +360,7 @@ func DrawStringRGBA(txtSize float64, fontColor color.RGBA, txt string) (*image.R
     return rgba, &d.Face
 }
 
+//Attempts to load a font using goMobile's truetype font library
 func LoadFont(fileName string) *truetype.Font {
 
     if fontCache == nil {
@@ -392,25 +407,29 @@ func LoadFont(fileName string) *truetype.Font {
     fontCache[fileName] = txtFont
 	return txtFont
 }
+
+//Holds all the configuration details for drawing a string into a texture.  This structure gets written to during the draw
 type FormatParams struct {
-	Colour            *color.RGBA
+	Colour            *color.RGBA //Text colour
 	Line              int
 	Cursor            int
     SelectStart       int   //Start of the selection box, counted from the start of document
     SelectEnd         int   //End of the selection box, counted from the start of document
 	StartLinePos      int //Updated during render, holds the closest start of line, including soft line breaks
-	FontSize          float64
+	FontSize          float64 //Fontsize, in points or something idfk
 	FirstDrawnCharPos int //The first character to draw on the screen.  Anything before this is ignored
 	LastDrawnCharPos  int //The last character that we were able to fit on the screen
-	TailBuffer        bool
-	Outline           bool
-	Vertical          bool
+	TailBuffer        bool //Nothing for now
+	Outline           bool //Nothing for now
+	Vertical          bool //Draw texture vertically for Chinese/Japanese rendering
 }
 
+//Create a new text formatter, with useful default parameters
 func NewFormatter() *FormatParams{
-    return &FormatParams{&color.RGBA{1,1,1,255},0,0,0,0,0, 36.0,0,0, false, true, false}
+    return &FormatParams{&color.RGBA{128,128,128,255},0,0,0,0,0, 36.0,0,0, false, true, false}
 }
 
+//Draw a cursor shape
 func DrawCursor(xpos, ypos, height, clientWidth int, u8Pix []byte) {
 	colour := byte(0)
 	for xx := int(0); xx < 3; xx++ {
@@ -426,6 +445,7 @@ func DrawCursor(xpos, ypos, height, clientWidth int, u8Pix []byte) {
 		}
 	}
 }
+
 //Check and correct formatparams to make sure e.g. cursor is always on the screen
 func SanityCheck(f *FormatParams, txt string) {
 	if f.Cursor < 0 {
@@ -447,7 +467,6 @@ func Fixed2int(n fixed.Int26_6) int {
 	return n.Round()
 }
 
-
 type Vec2 struct {
     x,y int
 }
@@ -467,6 +486,7 @@ func InBounds(v, min, max, charDim Vec2) bool {
     }
     return true
 }
+
 func MoveInBounds(v, min, max, charDim, charAdv, linAdv Vec2) (newPos Vec2) {
     //fmt.Printf("pos: (%v), min: (%v), max: (%v), charDim: (%v)\n",v, min, max, charDim)
     if v.x < min.x {
@@ -484,6 +504,7 @@ func MoveInBounds(v, min, max, charDim, charAdv, linAdv Vec2) (newPos Vec2) {
     return v
 }
 
+//Get the maximum pixel size needed to hold a string
 func GetGlyphSize(size float64, str string) (int, int) {
     _, str_size := utf8.DecodeRuneInString(str)
     img, _ := DrawStringRGBA(size, color.RGBA{1.0,1.0,1.0,1.0}, str[0:str_size])
@@ -500,11 +521,10 @@ func copyFormatter(inF *FormatParams) *FormatParams {
     return out
 }
 
+//Draw some text into a 32bit RGBA byte array, wrapping where needed.  Supports all the options I need for a basic word processor, including vertical text, and different sized lines
 //This was a bad idea.  Instead of all the if statements, we should just assume everything is left-to-right, top-to-bottom, and then rotate the entire block afterwards (we will also have to rotate the characters around their own center)
 //Arabic will still need special code - better to separate into two completely different routines?
-
 //Return the cursor position (number of characters from start of text) that is closest to the mouse cursor (cursorX, cursorY)
-
 func RenderPara(f *FormatParams, xpos, ypos, orig_xpos, orig_ypos, maxX, maxY, clientWidth, clientHeight, cursorX, cursorY int, u8Pix []uint8, text string, transparent bool, doDraw bool, showCursor bool) (int, int, int) {
     cursorDist := 9999999
     seekCursorPos := 0
@@ -685,6 +705,7 @@ func RenderPara(f *FormatParams, xpos, ypos, orig_xpos, orig_ypos, maxX, maxY, c
     return seekCursorPos, xpos, ypos
 }
 
+//Return the larger of two integers
 func MaxI(a, b int) int {
 	if a > b {
 		return a
@@ -695,6 +716,7 @@ func MaxI(a, b int) int {
 //PasteBytes
 //
 // Takes a bag of bytes, and some dimensions, and pastes it into another bag of bytes
+// It's the basic image combining routine
 func PasteBytes(srcWidth, srcHeight int, srcBytes []byte, xpos, ypos, dstWidth, dstHeight int, u8Pix []uint8, transparent, showBorder bool) {
 	//log.Printf("Copying source image (%v,%v) into destination image (%v,%v) at point (%v, %v)\n", srcWidth, srcHeight, dstWidth, dstHeight, xpos, ypos)
 	bpp := 4 //bytes per pixel
@@ -801,6 +823,7 @@ func NextPo2(n int) int {
 	return int(math.Pow(2, math.Ceil(math.Log2(float64(n)))))
 }
 
+//Rotates a 32bit byte array into a new byte array.  The target array will be created with the correct dimensions
 func Rotate270(srcW, srcH int, src []byte) []byte {
 	//log.Printf("Rotating image (%v,%v)\n",srcW, srcH)
 	dstW := srcH
