@@ -410,23 +410,24 @@ func LoadFont(fileName string) *truetype.Font {
 
 //Holds all the configuration details for drawing a string into a texture.  This structure gets written to during the draw
 type FormatParams struct {
-	Colour            *color.RGBA //Text colour
+	Colour            *color.RGBA   //Text colour
 	Line              int
 	Cursor            int
-    SelectStart       int   //Start of the selection box, counted from the start of document
-    SelectEnd         int   //End of the selection box, counted from the start of document
-	StartLinePos      int //Updated during render, holds the closest start of line, including soft line breaks
-	FontSize          float64 //Fontsize, in points or something idfk
-	FirstDrawnCharPos int //The first character to draw on the screen.  Anything before this is ignored
-	LastDrawnCharPos  int //The last character that we were able to fit on the screen
-	TailBuffer        bool //Nothing for now
-	Outline           bool //Nothing for now
-	Vertical          bool //Draw texture vertically for Chinese/Japanese rendering
+    SelectStart       int           //Start of the selection box, counted from the start of document
+    SelectEnd         int           //End of the selection box, counted from the start of document
+	StartLinePos      int           //Updated during render, holds the closest start of line, including soft line breaks
+	FontSize          float64       //Fontsize, in points or something idfk
+	FirstDrawnCharPos int           //The first character to draw on the screen.  Anything before this is ignored
+	LastDrawnCharPos  int           //The last character that we were able to fit on the screen
+	TailBuffer        bool          //Nothing for now
+	Outline           bool          //Nothing for now
+	Vertical          bool          //Draw texture vertically for Chinese/Japanese rendering
+    SelectColour      *color.RGBA   //Selection text colour
 }
 
 //Create a new text formatter, with useful default parameters
 func NewFormatter() *FormatParams{
-    return &FormatParams{&color.RGBA{128,128,128,255},0,0,0,0,0, 36.0,0,0, false, true, false}
+    return &FormatParams{&color.RGBA{128,128,128,255},0,0,0,0,0, 36.0,0,0, false, true, false, &color.RGBA{255,128,128,255}}
 }
 
 //Draw a cursor shape
@@ -582,19 +583,20 @@ func RenderPara(f *FormatParams, xpos, ypos, orig_xpos, orig_ypos, maxX, maxY, c
 			//}
 			foreGround = &color.RGBA{255, 1, 1, 255}
 		}
-        if (i>=f.SelectStart) && (i<=f.SelectEnd) {
+        if (i>=f.SelectStart) && (i<=f.SelectEnd) && (f.SelectStart!=f.SelectEnd) {
             nf := copyFormatter(f)
             nf.SelectStart = -1
             nf.SelectEnd = -1
-            if i-1<f.SelectStart {
-                _, xpos, ypos = RenderPara(nf, xpos, ypos, 0, 0, maxX, maxY, clientWidth, clientHeight, cursorX, cursorY, u8Pix, "『", transparent, doDraw, showCursor)
+            nf.Colour = &color.RGBA{255, 1, 1, 255}
+            /*if i-1<f.SelectStart {
+                _, xpos, ypos = RenderPara(nf, xpos, ypos, 0, 0, maxX, maxY, clientWidth, clientHeight, cursorX, cursorY, u8Pix, "{", transparent, doDraw, showCursor)
             }
             if i+1>f.SelectEnd {
-                _, xpos, ypos = RenderPara(nf, xpos, ypos, 0, 0, maxX, maxY, clientWidth, clientHeight, cursorX, cursorY, u8Pix, "』", transparent, doDraw, showCursor)
-            }
+                _, xpos, ypos = RenderPara(nf, xpos, ypos, 0, 0, maxX, maxY, clientWidth, clientHeight, cursorX, cursorY, u8Pix, "}", transparent, doDraw, showCursor)
+            }*/
 
             //fmt.Printf("%v is between %v and %v\n", i , f.SelectStart, f.SelectEnd)
-            foreGround = &color.RGBA{1,255,1,255}
+            foreGround = nf.Colour
         }
         //fmt.Printf("%v: %V\n", i , f)
 		if (string(text[i]) == " ") || (string(text[i]) == "\n") {
