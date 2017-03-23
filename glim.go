@@ -311,6 +311,7 @@ func ClearAllCaches() {
 
 //Creates a texture and draws a string to it
 func DrawStringRGBA(txtSize float64, fontColor color.RGBA, txt string) (*image.RGBA, *font.Face) {
+    //log.Printf("Drawing text (%v), colour (%v), size(%v)\n", txt, fontColor, txtSize)
     cacheKey := fmt.Sprintf("%v,%v,%v", txtSize, fontColor, txt)
     if renderCache == nil {
         renderCache = map[string]*image.RGBA{}
@@ -341,14 +342,16 @@ func DrawStringRGBA(txtSize float64, fontColor color.RGBA, txt string) (*image.R
     // fuckedRect, _, _ = fface.GlyphBounds(glyph)
     // letterHeight := fixed2int(fuckedRect.Max.Y)
     //]
-    rect := image.Rect(0, 0, d.MeasureString(txt).Ceil()*2, int(txtSize)*3/2)
+    targetWidth := d.MeasureString(txt).Ceil()*2
+    targetHeight := int(txtSize)*3
+    rect := image.Rect(0, 0, targetWidth, targetHeight)
     //rect := image.Rect(0, 0, 30, 30)
     rgba := image.NewRGBA(rect)
     d.Dst = rgba
 
     d.Dot = fixed.Point26_6{
         X: fixed.I(Xadj),
-        Y: fixed.I(rect.Max.Y*2/3), //fixed.I(rect.Max.Y/3), //rect.Max.Y*2/3),
+        Y: fixed.I(targetHeight*2/3), //fixed.I(rect.Max.Y/3), //rect.Max.Y*2/3), //FIXME
     }
     d.DrawString(txt)
     renderCache[cacheKey] = rgba
@@ -357,7 +360,9 @@ func DrawStringRGBA(txtSize float64, fontColor color.RGBA, txt string) (*image.R
     //for i,v := range imgBytes {
        //imgBytes[i] = 255 - v
     //}
-    return rgba, &d.Face
+
+
+ return rgba, &d.Face
 }
 
 //Attempts to load a font using goMobile's truetype font library
@@ -376,7 +381,7 @@ func LoadFont(fileName string) *truetype.Font {
 	var f io.Reader
     folderPath, err := osext.ExecutableFolder()
     if err != nil {
-        log.Printf("Could not get exec path, falling back to system font\n", )
+        log.Printf("Could not get exec path, falling back to system font: ", err )
         fontBytes := sysFont.Monospace()
         f = bytes.NewReader(fontBytes)
     } else {
@@ -384,7 +389,7 @@ func LoadFont(fileName string) *truetype.Font {
         file, err := os.Open(fmt.Sprintf("%v%v%v", folderPath, string(os.PathSeparator), fileName))
         if err != nil {
             //log.Fatal(err)
-            log.Printf("Could not open %v, falling back to system font\n", fmt.Sprintf("%v%v%v", folderPath, string(os.PathSeparator), fileName))
+            log.Printf("Could not open %v, falling back to system font: %v\n", fmt.Sprintf("%v%v%v", folderPath, string(os.PathSeparator), fileName), err)
             fontBytes := sysFont.Monospace()
             f = bytes.NewReader(fontBytes)
         } else {
@@ -427,7 +432,7 @@ type FormatParams struct {
 
 //Create a new text formatter, with useful default parameters
 func NewFormatter() *FormatParams{
-    return &FormatParams{&color.RGBA{128,128,128,255},0,0,0,0,0, 36.0,0,0, false, true, false, &color.RGBA{255,128,128,255}}
+    return &FormatParams{&color.RGBA{5,5,5,255},0,0,0,0,0, 36.0,0,0, false, true, false, &color.RGBA{255,128,128,255}}
 }
 
 //Draw a cursor shape
@@ -679,7 +684,7 @@ func RenderPara(f *FormatParams, xpos, ypos, orig_xpos, orig_ypos, maxX, maxY, c
 				if doDraw {
 					//PasteImg(img, xpos, ypos + ytweak, u8Pix, transparent)
 					//PasteBytes(XmaX, YmaX, imgBytes, xpos, ypos+ytweak, int(clientWidth), int(clientHeight), u8Pix, transparent)
-					PasteBytes(XmaX, YmaX, imgBytes, xpos, ypos+ytweak, int(clientWidth), int(clientHeight), u8Pix, true, false)
+					PasteBytes(XmaX, YmaX, imgBytes, xpos, ypos+ytweak, int(clientWidth), int(clientHeight), u8Pix, true, false, true)
 				}
 
 				if f.Cursor == i && showCursor {
@@ -719,51 +724,48 @@ func MaxI(a, b int) int {
 //
 // Takes a bag of bytes, and some dimensions, and pastes it into another bag of bytes
 // It's the basic image combining routine
-func PasteBytes(srcWidth, srcHeight int, srcBytes []byte, xpos, ypos, dstWidth, dstHeight int, u8Pix []uint8, transparent, showBorder bool) {
+func PasteBytes(srcWidth, srcHeight int, srcBytes []byte, xpos, ypos, dstWidth, dstHeight int, u8Pix []uint8, transparent, showBorder bool, copyAlpha bool) {
 	//log.Printf("Copying source image (%v,%v) into destination image (%v,%v) at point (%v, %v)\n", srcWidth, srcHeight, dstWidth, dstHeight, xpos, ypos)
 	bpp := 4 //bytes per pixel
 
-	for i := 0; i < srcHeight; i++ {
-		if transparent {
-			for j := 0; j < srcWidth; j++ {
-				srcOff := i*srcWidth*4 + j*4
+    for i := 0; i < srcHeight; i++ {
+        if transparent {
+            for j := 0; j < srcWidth; j++ {
+                srcOff := i*srcWidth*4 + j*4
 				dstOff := (ypos+i)*dstWidth*bpp + xpos*bpp + j*bpp
-				// if(i==j) {
-				//     u8Pix[dstOff] = 255
-				//     u8Pix[dstOff+3] = 255
-				// }
-				r := srcBytes[srcOff+0]
-				g := srcBytes[srcOff+1]
-				b := srcBytes[srcOff+2]
+
+                r := srcBytes[srcOff+0]
+                g := srcBytes[srcOff+1]
+                b := srcBytes[srcOff+2]
 
 				dstR := u8Pix[srcOff+0]
 				dstG := u8Pix[srcOff+1]
 				dstB := u8Pix[srcOff+2]
 
-				srcA := srcBytes[srcOff+3]
-				dstA := u8Pix[dstOff+3]
+				srcA := float64(srcBytes[srcOff+3])/255.0
+				dstA := 0.0 //float64(u8Pix[dstOff+3])/255.0
 
 				outA := srcA + dstA*(1-srcA)
 
 				outR := byte(0)
 				outG := byte(0)
 				outB := byte(0)
-				if outA > 0 {
-					outR = (r*srcA + dstR*dstA*(1-srcA)) / outA
-					outG = (g*srcA + dstG*dstA*(1-srcA)) / outA
-					outB = (b*srcA + dstB*dstA*(1-srcA)) / outA
-				} else {
-					outR = 0
-					outG = 0
-					outB = 0
-				}
-				if srcBytes[i*srcWidth*4+j*4] > u8Pix[(ypos+i)*dstWidth*bpp+xpos*bpp+j*bpp] {
-					//log2Buff(fmt.Sprintf("Source: (%v,%v), destination: (%v,%v)\n", j,i,xpos+j, ypos+i))
-					copy(u8Pix[dstOff:dstOff+4], srcBytes[srcOff:srcOff+4])
-				}
-				u8Pix[srcOff+0] = outR
-				u8Pix[srcOff+1] = outG
-				u8Pix[srcOff+2] = outB
+                outR = byte((float64(r)*srcA + float64(dstR)*dstA*(1-srcA)) / outA)
+                outG = byte((float64(g)*srcA + float64(dstG)*dstA*(1-srcA)) / outA)
+                outB = byte((float64(b)*srcA + float64(dstB)*dstA*(1-srcA)) / outA)
+				//if srcBytes[i*srcWidth*4+j*4] > u8Pix[(ypos+i)*dstWidth*bpp+xpos*bpp+j*bpp] {
+					////log2Buff(fmt.Sprintf("Source: (%v,%v), destination: (%v,%v)\n", j,i,xpos+j, ypos+i))
+					//copy(u8Pix[dstOff:dstOff+4], srcBytes[srcOff:srcOff+4])
+				//}
+				u8Pix[dstOff+0] = outR
+				u8Pix[dstOff+1] = outG
+				u8Pix[dstOff+2] = outB
+                if copyAlpha {  //Needed because the default alpha is 0, which causes multiple pastes to fully overwrite the previous pastes
+                 if srcBytes[srcOff+3] > u8Pix[dstOff+3] {
+                        u8Pix[dstOff+3] = srcBytes[srcOff+3]
+                    }
+                }
+				//copy(u8Pix[dstOff:dstOff+4], srcBytes[srcOff:srcOff+4])
                 if showBorder {
                 if i == 0 || j == 0 || i == srcHeight - 1 || j == srcWidth -1 {
                    u8Pix[dstOff+0] = 255
