@@ -341,6 +341,7 @@ func DrawStringRGBA(txtSize float64, fontColor color.RGBA, txt string) (*image.R
     if Xadj<0 { Xadj = Xadj * -1 }
     // fuckedRect, _, _ = fface.GlyphBounds(glyph)
     // letterHeight := fixed2int(fuckedRect.Max.Y)
+    //ascend := fuckedRect.Min.Y
     //]
     targetWidth := d.MeasureString(txt).Ceil()*2
     targetHeight := int(txtSize)*3
@@ -351,7 +352,7 @@ func DrawStringRGBA(txtSize float64, fontColor color.RGBA, txt string) (*image.R
 
     d.Dot = fixed.Point26_6{
         X: fixed.I(Xadj),
-        Y: fixed.I(targetHeight*2/3), //fixed.I(rect.Max.Y/3), //rect.Max.Y*2/3), //FIXME
+        Y: fixed.I(targetHeight*1/3), //fixed.I(rect.Max.Y/3), //rect.Max.Y*2/3), //FIXME
     }
     d.DrawString(txt)
     renderCache[cacheKey] = rgba
@@ -432,7 +433,7 @@ type FormatParams struct {
 
 //Create a new text formatter, with useful default parameters
 func NewFormatter() *FormatParams{
-    return &FormatParams{&color.RGBA{5,5,5,255},0,0,0,0,0, 36.0,0,0, false, true, false, &color.RGBA{255,128,128,255}}
+    return &FormatParams{&color.RGBA{5,5,5,255},0,0,0,0,0, 22.0,0,0, false, true, false, &color.RGBA{255,128,128,255}}
 }
 
 //Draw a cursor shape
