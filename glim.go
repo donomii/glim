@@ -151,9 +151,9 @@ func Abs32(x uint32) uint32 {
 func CopyFrameBuff(glctx gl.Context, rtt_frameBuff gl.Framebuffer, clientWidth, clientHeight int) []byte {
 	buff := make([]byte, clientWidth*clientHeight*4, clientWidth*clientHeight*4)
 	//fmt.Printf("reading pixels: ")
-	glctx.BindFramebuffer(gl.FRAMEBUFFER, rtt_frameBuff)
+	//glctx.BindFramebuffer(gl.FRAMEBUFFER, rtt_frameBuff)
 	glctx.ReadPixels(buff, 0, 0, clientWidth, clientHeight, gl.RGBA, gl.UNSIGNED_BYTE)
-	glctx.BindFramebuffer(gl.FRAMEBUFFER, gl.Framebuffer{0})
+	//glctx.BindFramebuffer(gl.FRAMEBUFFER, gl.Framebuffer{0})
 	return buff
 }
 
@@ -184,6 +184,7 @@ func SaveBuff(texWidth, texHeight int, buff []byte, filename string) {
 	png.Encode(f, m)
 }
 
+var fname_int int
 //Render-to-texture
 //
 //Instead of drawing to the screen, draw into a texture.  You must create the framebuffer and texture first, and do whatever setup is required to make them valid.
@@ -198,9 +199,18 @@ func Rtt(glctx gl.Context, rtt_frameBuff gl.Framebuffer, rtt_tex gl.Texture,  te
 	glctx.ActiveTexture(gl.TEXTURE0)
 	glctx.BindTexture(gl.TEXTURE_2D, rtt_tex)
 	//draw here the content you want in the texture
-	log.Printf("Framebuffer status: %v\n", glctx.CheckFramebufferStatus(gl.FRAMEBUFFER))
+	log.Printf("+Framebuffer status: %v\n", glctx.CheckFramebufferStatus(gl.FRAMEBUFFER))
+
 
 	//rtt_tex is now a texture with the drawn content
+	   depthbuffer := glctx.CreateRenderbuffer()
+	   glctx.BindRenderbuffer(gl.RENDERBUFFER, depthbuffer)
+	   glctx.RenderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, texWidth, texHeight)
+	   glctx.FramebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, depthbuffer)
+  //     glctx.FramebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, rtt_tex, 0)
+
+
+	glctx.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, rtt_tex, 0)
 
 	glctx.Enable(gl.BLEND)
 	glctx.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
@@ -216,7 +226,8 @@ func Rtt(glctx gl.Context, rtt_frameBuff gl.Framebuffer, rtt_tex gl.Texture,  te
     glctx.GenerateMipmap(gl.TEXTURE_2D)
 
 	buff := CopyFrameBuff(glctx, rtt_frameBuff, texWidth, texHeight)
-	SaveBuff(int(texWidth), int(texHeight), buff, "x.png")
+	SaveBuff(int(texWidth), int(texHeight), buff, fmt.Sprintf("x_%v.png", fname_int))
+    fname_int+=1
 	glctx.BindTexture(gl.TEXTURE_2D, gl.Texture{0})
 	glctx.BindFramebuffer(gl.FRAMEBUFFER, gl.Framebuffer{0})
     glctx.BindFramebuffer(gl.FRAMEBUFFER, gl.Framebuffer{0})
@@ -266,7 +277,7 @@ func UploadTex(glctx gl.Context, glTex gl.Texture, w, h int, buff []uint8) {
 
 //Creates a new framebuffer and texture, with the texture attached to the frame buffer
 //FIXME: rename to GenTextureAndFramebuffer?
-func GenTextureFromFramebuffer(glctx gl.Context, w, h int) (gl.Framebuffer, gl.Texture) {
+func GenTextureFromFramebuffer(glctx gl.Context, w, h int, format gl.Enum) (gl.Framebuffer, gl.Texture) {
 	f := glctx.CreateFramebuffer()
 	glctx.BindFramebuffer(gl.FRAMEBUFFER, f)
 	glctx.ActiveTexture(gl.TEXTURE0)
@@ -279,22 +290,23 @@ func GenTextureFromFramebuffer(glctx gl.Context, w, h int) (gl.Framebuffer, gl.T
 	glctx.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 	glctx.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
 
-	glctx.TexImage2D(gl.TEXTURE_2D, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, nil)
+	glctx.TexImage2D(gl.TEXTURE_2D, 0, w, h, format, gl.UNSIGNED_INT, nil)
+	//glctx.TexImage2D(gl.TEXTURE_2D, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, nil)
 
 	glctx.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, t, 0)
-
-	/*
+	
+/*
 	   depthbuffer := glctx.CreateRenderbuffer()
 	   glctx.BindRenderbuffer(gl.RENDERBUFFER, depthbuffer)
 	   glctx.RenderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, w, h)
 	   glctx.FramebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, depthbuffer)
-	*/
+*/
+	
 
-	status := glctx.CheckFramebufferStatus(gl.FRAMEBUFFER)
-	if status != gl.FRAMEBUFFER_COMPLETE {
-		fmt.Printf("Framebuffer status: %v\n", status)
-		os.Exit(1)
-	}
+	//status := glctx.CheckFramebufferStatus(gl.FRAMEBUFFER)
+	//if status != gl.FRAMEBUFFER_COMPLETE {
+		//log.Fatal(fmt.Sprintf("Gentexture failed: Framebuffer status: %v\n", status))
+	//}
 	glctx.BindFramebuffer(gl.FRAMEBUFFER, gl.Framebuffer{0})
 	return f, t
 }
