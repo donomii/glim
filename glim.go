@@ -104,6 +104,7 @@ func CopyScreen(glctx gl.Context, clientWidth, clientHeight int) []byte {
 	return buff
 }
 
+//Copy the render buffer to golangs's horrible image format.  Use CopyScreen instead.
 func CopyScreenToGFormat(glctx gl.Context, clientWidth, clientHeight int) image.Image {
 	buff := CopyScreen(glctx, clientWidth, clientHeight)
 	rect := image.Rectangle{image.Point{0, clientWidth}, image.Point{0, clientHeight}}
@@ -115,6 +116,7 @@ func CopyScreenToGFormat(glctx gl.Context, clientWidth, clientHeight int) image.
 	return rgba
 }
 
+//Abs difference of two uint32 numbers
 func udiff(a, b uint32) uint32 {
 	if a > b {
 		return a - b
@@ -123,6 +125,9 @@ func udiff(a, b uint32) uint32 {
 	}
 }
 
+//Returns a number representing the graphical difference between two images.
+//
+//This difference is calculated by comparing each pixel and summing the difference in colour
 func GDiff(m, m1 image.Image) int64 {
 	bounds := m.Bounds()
 
@@ -137,7 +142,7 @@ func GDiff(m, m1 image.Image) int64 {
 	return diff
 }
 
-// Abs32 returns the absolute value of x.
+// Abs32 returns the absolute value of uint32 x.
 func Abs32(x uint32) uint32 {
 	if x < 0 {
 		return -x
@@ -191,8 +196,9 @@ var fname_int int
 //
 //Thunk is a function that takes no args, returns no values, but draws the gl screen
 //
-//Rtt does the correct setup to prepare the texture for drawing, calls thunk() to draw it, then undoes the setup
-//It restores the default frambuffer i.e. frambuffer 0, at the end of the call, make sure you switch to the correct one before doing anymore drawing!
+//Rtt does the correct setup to prepare the texture for drawing, calls thunk() to draw it, then it restores the default frambuffer 
+//
+//i.e. frambuffer 0 is active at the end of the call, so make sure you switch to the correct one before doing anymore drawing!  I should probably take that out, and figure out how to restore the currect framebuff
 func Rtt(glctx gl.Context, rtt_frameBuff gl.Framebuffer, rtt_tex gl.Texture, texWidth, texHeight int, program gl.Program, thunk Thunk) {
 	glctx.BindFramebuffer(gl.FRAMEBUFFER, rtt_frameBuff)
 	glctx.Viewport(0, 0, texWidth, texHeight)
@@ -275,6 +281,7 @@ func UploadTex(glctx gl.Context, glTex gl.Texture, w, h int, buff []uint8) {
 }
 
 //Creates a new framebuffer and texture, with the texture attached to the frame buffer
+//
 //FIXME: rename to GenTextureAndFramebuffer?
 func GenTextureFromFramebuffer(glctx gl.Context, w, h int, format gl.Enum) (gl.Framebuffer, gl.Texture) {
 	f := glctx.CreateFramebuffer()
@@ -314,6 +321,7 @@ var renderCache map[string]*image.RGBA
 var faceCache map[string]*font.Face
 var fontCache map[string]*truetype.Font
 
+//Dump the rendercache, facecache and fontcache
 func ClearAllCaches() {
 	renderCache = map[string]*image.RGBA{}
 	faceCache = map[string]*font.Face{}
@@ -321,6 +329,8 @@ func ClearAllCaches() {
 }
 
 //Creates a texture and draws a string to it
+//
+//FIXME some fonts might not compeletely fit in the texture (usually the decorative ones which extend into another letter)
 func DrawStringRGBA(txtSize float64, fontColor color.RGBA, txt string) (*image.RGBA, *font.Face) {
 	//log.Printf("Drawing text (%v), colour (%v), size(%v)\n", txt, fontColor, txtSize)
 	cacheKey := fmt.Sprintf("%v,%v,%v", txtSize, fontColor, txt)
@@ -431,7 +441,7 @@ func LoadFont(fileName string) *truetype.Font {
 type FormatParams struct {
 	Colour            *color.RGBA //Text colour
 	Line              int
-	Cursor            int
+	Cursor            int         //The cursor position, in characters from the start of the text
 	SelectStart       int         //Start of the selection box, counted from the start of document
 	SelectEnd         int         //End of the selection box, counted from the start of document
 	StartLinePos      int         //Updated during render, holds the closest start of line, including soft line breaks
