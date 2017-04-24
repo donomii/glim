@@ -186,7 +186,7 @@ func SaveBuff(texWidth, texHeight int, buff []byte, filename string) {
 	}
 	f, err := os.OpenFile(filename, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0666)
     if err != nil {
-        panic(fmt.Sprintf("Could not save buffer to %v", filename))
+        panic(fmt.Sprintf("Could not save buffer to %v : %v", filename, err))
     }
 	defer f.Close()
 	png.Encode(f, m)
