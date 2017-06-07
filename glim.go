@@ -185,21 +185,22 @@ func SaveBuff(texWidth, texHeight int, buff []byte, filename string) {
 		}
 	}
 	f, err := os.OpenFile(filename, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0666)
-    if err != nil {
-        panic(fmt.Sprintf("Could not save buffer to %v : %v", filename, err))
-    }
+	if err != nil {
+		panic(fmt.Sprintf("Could not save buffer to %v : %v", filename, err))
+	}
 	defer f.Close()
 	png.Encode(f, m)
 }
 
 var fname_int int
+
 //Render-to-texture
 //
 //Instead of drawing to the screen, draw into a texture.  You must create the framebuffer and texture first, and do whatever setup is required to make them valid.
 //
 //Thunk is a function that takes no args, returns no values, but draws the gl screen
 //
-//Rtt does the correct setup to prepare the texture for drawing, calls thunk() to draw it, then it restores the default frambuffer 
+//Rtt does the correct setup to prepare the texture for drawing, calls thunk() to draw it, then it restores the default frambuffer
 //
 //i.e. frambuffer 0 is active at the end of the call, so make sure you switch to the correct one before doing anymore drawing!  I should probably take that out, and figure out how to restore the currect framebuff
 func Rtt(glctx gl.Context, rtt_frameBuff gl.Framebuffer, rtt_tex gl.Texture, texWidth, texHeight int, program gl.Program, thunk Thunk) {
@@ -210,14 +211,12 @@ func Rtt(glctx gl.Context, rtt_frameBuff gl.Framebuffer, rtt_tex gl.Texture, tex
 	//draw here the content you want in the texture
 	log.Printf("+Framebuffer status: %v\n", glctx.CheckFramebufferStatus(gl.FRAMEBUFFER))
 
-
 	//rtt_tex is now a texture with the drawn content
-	   depthbuffer := glctx.CreateRenderbuffer()
-	   glctx.BindRenderbuffer(gl.RENDERBUFFER, depthbuffer)
-	   glctx.RenderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, texWidth, texHeight)
-	   glctx.FramebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, depthbuffer)
-  //     glctx.FramebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, rtt_tex, 0)
-
+	depthbuffer := glctx.CreateRenderbuffer()
+	glctx.BindRenderbuffer(gl.RENDERBUFFER, depthbuffer)
+	glctx.RenderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, texWidth, texHeight)
+	glctx.FramebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, depthbuffer)
+	//     glctx.FramebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, rtt_tex, 0)
 
 	glctx.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, rtt_tex, 0)
 
@@ -236,7 +235,7 @@ func Rtt(glctx gl.Context, rtt_frameBuff gl.Framebuffer, rtt_tex gl.Texture, tex
 
 	buff := CopyFrameBuff(glctx, rtt_frameBuff, texWidth, texHeight)
 	SaveBuff(int(texWidth), int(texHeight), buff, fmt.Sprintf("x_%v.png", fname_int))
-    fname_int+=1
+	fname_int += 1
 	glctx.BindTexture(gl.TEXTURE_2D, gl.Texture{0})
 	glctx.BindFramebuffer(gl.FRAMEBUFFER, gl.Framebuffer{0})
 	glctx.BindFramebuffer(gl.FRAMEBUFFER, gl.Framebuffer{0})
@@ -303,18 +302,17 @@ func GenTextureFromFramebuffer(glctx gl.Context, w, h int, format gl.Enum) (gl.F
 	//glctx.TexImage2D(gl.TEXTURE_2D, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, nil)
 
 	glctx.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, t, 0)
-	
-/*
+
+	/*
 	   depthbuffer := glctx.CreateRenderbuffer()
 	   glctx.BindRenderbuffer(gl.RENDERBUFFER, depthbuffer)
 	   glctx.RenderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, w, h)
 	   glctx.FramebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, depthbuffer)
-*/
-	
+	*/
 
 	//status := glctx.CheckFramebufferStatus(gl.FRAMEBUFFER)
 	//if status != gl.FRAMEBUFFER_COMPLETE {
-		//log.Fatal(fmt.Sprintf("Gentexture failed: Framebuffer status: %v\n", status))
+	//log.Fatal(fmt.Sprintf("Gentexture failed: Framebuffer status: %v\n", status))
 	//}
 	glctx.BindFramebuffer(gl.FRAMEBUFFER, gl.Framebuffer{0})
 	return f, t
@@ -564,6 +562,7 @@ func RenderPara(f *FormatParams, xpos, ypos, orig_xpos, orig_ypos, maxX, maxY, c
 	vert := f.Vertical
 	orig_colour := f.Colour
 	foreGround := f.Colour
+	colSwitch := false
 	if f.TailBuffer {
 		//f.Cursor = len(text)
 		//scrollToCursor(f, text)  //Use pageup function, once it is fast enough
@@ -603,9 +602,9 @@ func RenderPara(f *FormatParams, xpos, ypos, orig_xpos, orig_ypos, maxX, maxY, c
 		if i >= len(letters)-1 {
 			continue
 		}
-		foreGround = orig_colour
+		//foreGround = orig_colour
 
-		if unicode.IsUpper([]rune(v)[0]) {
+		if unicode.IsSpace([]rune(v)[0]) {
 			//if i>0 && letters[i-1] == " " {
 			//f.Colour = &color.RGBA{255,0,0,255}
 			//f.FontSize = f.FontSize*1.2
@@ -613,7 +612,12 @@ func RenderPara(f *FormatParams, xpos, ypos, orig_xpos, orig_ypos, maxX, maxY, c
 			//} else {
 			//f.Colour = &color.RGBA{1,1,1,255}
 			//}
-			foreGround = &color.RGBA{255, 1, 1, 255}
+			colSwitch = !colSwitch
+			if colSwitch {
+				foreGround = &color.RGBA{255, 1, 1, 255}
+			} else {
+				foreGround = orig_colour
+			}
 		}
 		if (i >= f.SelectStart) && (i <= f.SelectEnd) && (f.SelectStart != f.SelectEnd) {
 			nf := copyFormatter(f)
