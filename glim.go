@@ -173,7 +173,7 @@ func SaveImage(m *image.RGBA, filename string) {
 func SaveBuff(texWidth, texHeight int, buff []byte, filename string) {
 	m := image.NewNRGBA(image.Rectangle{image.Point{0, 0}, image.Point{int(texWidth), int(texHeight)}})
 	if buff != nil {
-		log.Printf("Saving buffer: %v,%v", texWidth, texHeight)
+		//log.Printf("Saving buffer: %v,%v", texWidth, texHeight)
 		for y := 0; y < texHeight; y++ {
 			for x := 0; x < texWidth; x++ {
 				i := (x + y*texWidth) * 4
