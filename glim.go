@@ -406,16 +406,16 @@ func LoadFont(fileName string) *truetype.Font {
 	folderPath, err := osext.ExecutableFolder()
 	if err != nil {
 		log.Printf("Could not get exec path, falling back to system font\n")
-		//fontBytes := sysFont.Monospace()
-		//f = bytes.NewReader(fontBytes)
+		fontBytes := sysFont.Monospace()
+		f = bytes.NewReader(fontBytes)
 	} else {
 		//log.Println(fileName)
 		file, err := os.Open(fmt.Sprintf("%v%v%v", folderPath, string(os.PathSeparator), fileName))
 		if err != nil {
 			//log.Fatal(err)
 			log.Printf("Could not open %v, falling back to system font\n", fmt.Sprintf("%v%v%v", folderPath, string(os.PathSeparator), fileName))
-			//  fontBytes := sysFont.Monospace()
-			//  f = bytes.NewReader(fontBytes)
+			fontBytes := sysFont.Monospace()
+			f = bytes.NewReader(fontBytes)
 
 		} else {
 			defer file.Close()
