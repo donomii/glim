@@ -199,41 +199,71 @@ var fname_int int
 //
 //i.e. frambuffer 0 is active at the end of the call, so make sure you switch to the correct one before doing anymore drawing!  I should probably take that out, and figure out how to restore the currect framebuff
 func Rtt(glctx gl.Context, rtt_frameBuff gl.Framebuffer, rtt_tex gl.Texture, texWidth, texHeight int, program gl.Program, thunk Thunk) {
+	if texWidth != texHeight {
+		panic(fmt.Sprintf("You must provide equal width and height, you gave width: %v, height %v", texWidth, texHeight))
+	}
 	glctx.BindFramebuffer(gl.FRAMEBUFFER, rtt_frameBuff)
+	checkGlError(glctx)
 	glctx.Viewport(0, 0, texWidth, texHeight)
+	checkGlError(glctx)
 	glctx.ActiveTexture(gl.TEXTURE0)
+	checkGlError(glctx)
 	glctx.BindTexture(gl.TEXTURE_2D, rtt_tex)
+	checkGlError(glctx)
 	//draw here the content you want in the texture
 	log.Printf("+Framebuffer status: %v\n", glctx.CheckFramebufferStatus(gl.FRAMEBUFFER))
 
 	//rtt_tex is now a texture with the drawn content
 	depthbuffer := glctx.CreateRenderbuffer()
+	checkGlError(glctx)
 	glctx.BindRenderbuffer(gl.RENDERBUFFER, depthbuffer)
+	checkGlError(glctx)
 	glctx.RenderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, texWidth, texHeight)
+	checkGlError(glctx)
 	glctx.FramebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, depthbuffer)
+	checkGlError(glctx)
 	//     glctx.FramebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, rtt_tex, 0)
 
 	glctx.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, rtt_tex, 0)
+	checkGlError(glctx)
+	status := glctx.CheckFramebufferStatus(gl.FRAMEBUFFER)
+	log.Println("Framebuffer status: ", status)
 
 	glctx.Enable(gl.BLEND)
+	checkGlError(glctx)
 	glctx.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+	checkGlError(glctx)
 	glctx.Enable(gl.DEPTH_TEST)
+	checkGlError(glctx)
 	glctx.DepthFunc(gl.LEQUAL)
+	checkGlError(glctx)
 	glctx.DepthMask(true)
+	checkGlError(glctx)
 	glctx.ClearColor(0, 0, 0, 1)
-	glctx.UseProgram(program) //FIXME - may cause graphics glitches
-	glctx.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
+	checkGlError(glctx)
+	//glctx.UseProgram(program) //FIXME - may cause graphics glitches
+	//checkGlError(glctx)
+	glctx.Clear(gl.DEPTH_BUFFER_BIT)
+	checkGlError(glctx)
+	glctx.Clear(gl.COLOR_BUFFER_BIT)
+	checkGlError(glctx)
 	thunk()
 
 	glctx.Flush()
+	checkGlError(glctx)
 	glctx.GenerateMipmap(gl.TEXTURE_2D)
+	checkGlError(glctx)
 
 	buff := CopyFrameBuff(glctx, rtt_frameBuff, texWidth, texHeight)
+	checkGlError(glctx)
 	SaveBuff(int(texWidth), int(texHeight), buff, fmt.Sprintf("x_%v.png", fname_int))
 	fname_int += 1
 	glctx.BindTexture(gl.TEXTURE_2D, gl.Texture{0})
+	checkGlError(glctx)
+	//glctx.BindRenderbuffer(gl.FRAMEBUFFER, gl.Renderbuffer{0})
+	//checkGlError(glctx)
 	glctx.BindFramebuffer(gl.FRAMEBUFFER, gl.Framebuffer{0})
-	glctx.BindFramebuffer(gl.FRAMEBUFFER, gl.Framebuffer{0})
+	checkGlError(glctx)
 	//log.Println("Finished Rtt")
 	//fmt.Printf("done \n")
 }
@@ -256,13 +286,13 @@ func DumpBuff(buff []uint8, width, height uint) {
 }
 
 //Renders a string into a openGL texture.  No guarantees are made that the text will fit
-func String2Tex(glctx gl.Context, str string, tSize float64, glTex gl.Texture) {
+func String2Tex(glctx gl.Context, str string, tSize float64, glTex gl.Texture, texSize int) {
 	img, _ := DrawStringRGBA(tSize, color.RGBA{255, 255, 255, 255}, str)
 	SaveImage(img, "texttest.png")
-	w := 256 //img.Bounds().Max.X  //FIXME
-	buff := PaintTexture(img, nil, int(w))
+
+	buff := PaintTexture(img, nil, int(texSize))
 	//DumpBuff(buff, uint(w), uint(w))
-	UploadTex(glctx, glTex, w, w, buff)
+	UploadTex(glctx, glTex, texSize, texSize, buff)
 }
 
 //Will attempt to load the contents of a 32bit RGBA byte array into an existing openGL texture.  The texture will be uploaded with the right options for displaying text i.e. clamp_to_edge and filter nearest.
@@ -285,7 +315,6 @@ func checkGlError(glctx gl.Context) {
 		panic(errStr)
 	}
 }
-
 
 //Creates a new framebuffer and texture, with the texture attached to the frame buffer
 //
