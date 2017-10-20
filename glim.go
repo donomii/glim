@@ -228,8 +228,8 @@ func Rtt(glctx gl.Context, rtt_frameBuff gl.Framebuffer, rtt_tex gl.Texture, tex
 	glctx.Flush()
 	glctx.GenerateMipmap(gl.TEXTURE_2D)
 
-	//buff := CopyFrameBuff(glctx, rtt_frameBuff, texWidth, texHeight)
-	//SaveBuff(int(texWidth), int(texHeight), buff, fmt.Sprintf("x_%v.png", fname_int))
+	buff := CopyFrameBuff(glctx, rtt_frameBuff, texWidth, texHeight)
+	SaveBuff(int(texWidth), int(texHeight), buff, fmt.Sprintf("x_%v.png", fname_int))
 	fname_int += 1
 	glctx.BindTexture(gl.TEXTURE_2D, gl.Texture{0})
 	glctx.BindFramebuffer(gl.FRAMEBUFFER, gl.Framebuffer{0})
@@ -277,25 +277,43 @@ func UploadTex(glctx gl.Context, glTex gl.Texture, w, h int, buff []uint8) {
 	glctx.GenerateMipmap(gl.TEXTURE_2D)
 }
 
+func checkGlError(glctx gl.Context) {
+	err := glctx.GetError()
+	if err > 0 {
+		errStr := fmt.Sprintf("GLerror: %v\n", err)
+		fmt.Printf(errStr)
+		panic(errStr)
+	}
+}
+
+
 //Creates a new framebuffer and texture, with the texture attached to the frame buffer
 //
 func GenTextureAndFramebuffer(glctx gl.Context, w, h int, format gl.Enum) (gl.Framebuffer, gl.Texture) {
 	f := glctx.CreateFramebuffer()
+	checkGlError(glctx)
 	/*glctx.BindFramebuffer(gl.FRAMEBUFFER, f)
 	glctx.ActiveTexture(gl.TEXTURE0)
 	t := glctx.CreateTexture()
 	log.Printf("Texture created: %v", t)
 
 	glctx.BindTexture(gl.TEXTURE_2D, t)
+	checkGlError(glctx)
 	glctx.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+	checkGlError(glctx)
 	glctx.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+	checkGlError(glctx)
 	glctx.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+	checkGlError(glctx)
 	glctx.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+	checkGlError(glctx)
 
 	glctx.TexImage2D(gl.TEXTURE_2D, 0, w, h, format, gl.UNSIGNED_INT, nil)
+	checkGlError(glctx)
 	//glctx.TexImage2D(gl.TEXTURE_2D, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, nil)
 
 	glctx.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, t, 0)
+	checkGlError(glctx)
 	*/
 
 	/*
@@ -317,20 +335,31 @@ func GenTextureAndFramebuffer(glctx gl.Context, w, h int, format gl.Enum) (gl.Fr
 //
 func GenTextureOnFramebuffer(glctx gl.Context, f gl.Framebuffer, w, h int, format gl.Enum) gl.Texture {
 	glctx.BindFramebuffer(gl.FRAMEBUFFER, f)
+	checkGlError(glctx)
 	glctx.ActiveTexture(gl.TEXTURE0)
+	checkGlError(glctx)
 	t := glctx.CreateTexture()
+	checkGlError(glctx)
 	log.Printf("Texture created: %v", t)
 
 	glctx.BindTexture(gl.TEXTURE_2D, t)
+	checkGlError(glctx)
 	glctx.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+	checkGlError(glctx)
 	glctx.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+	checkGlError(glctx)
 	glctx.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+	checkGlError(glctx)
 	glctx.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+	checkGlError(glctx)
 
-	glctx.TexImage2D(gl.TEXTURE_2D, 0, w, h, format, gl.UNSIGNED_INT, nil)
+	log.Printf("Creating texture of width %v and height %v", w, h)
+	glctx.TexImage2D(gl.TEXTURE_2D, 0, w, h, format, gl.UNSIGNED_BYTE, nil)
+	checkGlError(glctx)
 	//glctx.TexImage2D(gl.TEXTURE_2D, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, nil)
 
 	glctx.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, t, 0)
+	checkGlError(glctx)
 
 	/*
 	   depthbuffer := glctx.CreateRenderbuffer()
@@ -344,6 +373,7 @@ func GenTextureOnFramebuffer(glctx gl.Context, f gl.Framebuffer, w, h int, forma
 	//log.Fatal(fmt.Sprintf("Gentexture failed: Framebuffer status: %v\n", status))
 	//}
 	glctx.BindFramebuffer(gl.FRAMEBUFFER, gl.Framebuffer{0})
+	checkGlError(glctx)
 	return t
 }
 
