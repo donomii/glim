@@ -11,9 +11,9 @@ import (
 	"unicode/utf8"
 
 	"github.com/kardianos/osext"
-	//sysFont "golang.org/x/mobile/exp/font"
+	sysFont "golang.org/x/mobile/exp/font"
 	"io/ioutil"
-	//"bytes"
+	"bytes"
 	"fmt"
 	"io"
 	"log"
@@ -233,8 +233,8 @@ func Rtt(glctx gl.Context, rtt_frameBuff gl.Framebuffer, rtt_tex gl.Texture, tex
 	glctx.Flush()
 	glctx.GenerateMipmap(gl.TEXTURE_2D)
 
-	buff := CopyFrameBuff(glctx, rtt_frameBuff, texWidth, texHeight)
-	SaveBuff(int(texWidth), int(texHeight), buff, fmt.Sprintf("x_%v.png", fname_int))
+	//buff := CopyFrameBuff(glctx, rtt_frameBuff, texWidth, texHeight)
+	//SaveBuff(int(texWidth), int(texHeight), buff, fmt.Sprintf("x_%v.png", fname_int))
 	fname_int += 1
 	glctx.BindTexture(gl.TEXTURE_2D, gl.Texture{0})
 	glctx.BindFramebuffer(gl.FRAMEBUFFER, gl.Framebuffer{0})
@@ -284,9 +284,43 @@ func UploadTex(glctx gl.Context, glTex gl.Texture, w, h int, buff []uint8) {
 
 //Creates a new framebuffer and texture, with the texture attached to the frame buffer
 //
-//FIXME: rename to GenTextureAndFramebuffer?
-func GenTextureFromFramebuffer(glctx gl.Context, w, h int, format gl.Enum) (gl.Framebuffer, gl.Texture) {
+func GenTextureAndFramebuffer(glctx gl.Context, w, h int, format gl.Enum) (gl.Framebuffer, gl.Texture) {
 	f := glctx.CreateFramebuffer()
+	/*glctx.BindFramebuffer(gl.FRAMEBUFFER, f)
+	glctx.ActiveTexture(gl.TEXTURE0)
+	t := glctx.CreateTexture()
+	log.Printf("Texture created: %v", t)
+
+	glctx.BindTexture(gl.TEXTURE_2D, t)
+	glctx.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+	glctx.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+	glctx.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+	glctx.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+
+	glctx.TexImage2D(gl.TEXTURE_2D, 0, w, h, format, gl.UNSIGNED_INT, nil)
+	//glctx.TexImage2D(gl.TEXTURE_2D, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, nil)
+
+	glctx.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, t, 0)
+	*/
+
+	/*
+	   depthbuffer := glctx.CreateRenderbuffer()
+	   glctx.BindRenderbuffer(gl.RENDERBUFFER, depthbuffer)
+	   glctx.RenderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, w, h)
+	   glctx.FramebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, depthbuffer)
+	*/
+
+	//status := glctx.CheckFramebufferStatus(gl.FRAMEBUFFER)
+	//if status != gl.FRAMEBUFFER_COMPLETE {
+	//log.Fatal(fmt.Sprintf("Gentexture failed: Framebuffer status: %v\n", status))
+	//}
+	//glctx.BindFramebuffer(gl.FRAMEBUFFER, gl.Framebuffer{0})
+	return f, GenTextureOnFramebuffer(glctx, f, w, h, format)
+}
+
+//Creates a new framebuffer and texture, with the texture attached to the frame buffer
+//
+func GenTextureOnFramebuffer(glctx gl.Context, f gl.Framebuffer, w, h int, format gl.Enum) gl.Texture {
 	glctx.BindFramebuffer(gl.FRAMEBUFFER, f)
 	glctx.ActiveTexture(gl.TEXTURE0)
 	t := glctx.CreateTexture()
@@ -315,9 +349,8 @@ func GenTextureFromFramebuffer(glctx gl.Context, w, h int, format gl.Enum) (gl.F
 	//log.Fatal(fmt.Sprintf("Gentexture failed: Framebuffer status: %v\n", status))
 	//}
 	glctx.BindFramebuffer(gl.FRAMEBUFFER, gl.Framebuffer{0})
-	return f, t
+	return t
 }
-
 var renderCache map[string]*image.RGBA
 var faceCache map[string]*font.Face
 var fontCache map[string]*truetype.Font
