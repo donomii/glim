@@ -1,14 +1,7 @@
 // GL Image library.  Routines for handling images and textures in GO OpenGL (especially with the GoMobile framework)
 package glim
 
-import "math"
 import (
-	"image/draw"
-	_ "image/jpeg"
-	_ "image/png"
-	"strings"
-	"unicode"
-	"unicode/utf8"
 
 	"bytes"
 	"fmt"
@@ -21,14 +14,6 @@ import (
 	sysFont "golang.org/x/mobile/exp/font"
 
 	"github.com/golang/freetype/truetype"
-	"golang.org/x/image/font"
-	"golang.org/x/image/math/fixed"
-
-	"golang.org/x/mobile/gl"
-
-	"image"
-	"image/color"
-	"image/png"
 )
 
 //Attempts to load a font using goMobile's truetype font library
