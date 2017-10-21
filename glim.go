@@ -259,7 +259,7 @@ func Rtt(glctx gl.Context, rtt_frameBuff gl.Framebuffer, rtt_tex gl.Texture, tex
 	if filename != "" {
 		buff := CopyFrameBuff(glctx, rtt_frameBuff, texWidth, texHeight)
 		checkGlError(glctx)
-		SaveBuff(int(texWidth), int(texHeight), buff, fmt.Sprintf(filename + "_%v.png", fname_int)) //FIXME - make the numbers an option
+		SaveBuff(int(texWidth), int(texHeight), buff, fmt.Sprintf(filename + "_%04d.png", fname_int)) //FIXME - make the numbers an option
 		fname_int += 1
 	}
 	glctx.BindTexture(gl.TEXTURE_2D, gl.Texture{0})
