@@ -65,7 +65,7 @@ func PaintTexture(img image.Image, u8Pix []uint8, clientWidth int) []uint8 {
 
 	//if uint(newW) != clientWidth || uint(newH) != clientWidth {
 	if (int(newW) > clientWidth) || (int(newH) > clientWidth) {
-		panic(fmt.Sprintf("ClientWidth (%v) does not match image width(%v) and height(%v)", clientWidth, newW, newH))
+		panic(fmt.Sprintf("ClientWidth (%v) is not large enough for image of width(%v) and height(%v)", clientWidth, newW, newH))
 	}
 	if u8Pix == nil {
 		dim := clientWidth*clientWidth*4 + 4
@@ -197,8 +197,10 @@ var fname_int int
 //
 //Rtt does the correct setup to prepare the texture for drawing, calls thunk() to draw it, then it restores the default frambuffer
 //
+// If filename is not "", then Rtt will save the contents of the framebuffer to the filename, followed by a number for each frame.
+//
 //i.e. frambuffer 0 is active at the end of the call, so make sure you switch to the correct one before doing anymore drawing!  I should probably take that out, and figure out how to restore the currect framebuff
-func Rtt(glctx gl.Context, rtt_frameBuff gl.Framebuffer, rtt_tex gl.Texture, texWidth, texHeight int, program gl.Program, thunk Thunk) {
+func Rtt(glctx gl.Context, rtt_frameBuff gl.Framebuffer, rtt_tex gl.Texture, texWidth, texHeight int, filename string, thunk Thunk) {
 	if texWidth != texHeight {
 		panic(fmt.Sprintf("You must provide equal width and height, you gave width: %v, height %v", texWidth, texHeight))
 	}
@@ -254,10 +256,12 @@ func Rtt(glctx gl.Context, rtt_frameBuff gl.Framebuffer, rtt_tex gl.Texture, tex
 	glctx.GenerateMipmap(gl.TEXTURE_2D)
 	checkGlError(glctx)
 
-	buff := CopyFrameBuff(glctx, rtt_frameBuff, texWidth, texHeight)
-	checkGlError(glctx)
-	SaveBuff(int(texWidth), int(texHeight), buff, fmt.Sprintf("x_%v.png", fname_int))
-	fname_int += 1
+	if filename != "" {
+		buff := CopyFrameBuff(glctx, rtt_frameBuff, texWidth, texHeight)
+		checkGlError(glctx)
+		SaveBuff(int(texWidth), int(texHeight), buff, fmt.Sprintf(filename + "_%v.png", fname_int)) //FIXME - make the numbers an option
+		fname_int += 1
+	}
 	glctx.BindTexture(gl.TEXTURE_2D, gl.Texture{0})
 	checkGlError(glctx)
 	//glctx.BindRenderbuffer(gl.FRAMEBUFFER, gl.Renderbuffer{0})
@@ -288,7 +292,7 @@ func DumpBuff(buff []uint8, width, height uint) {
 //Renders a string into a openGL texture.  No guarantees are made that the text will fit
 func String2Tex(glctx gl.Context, str string, tSize float64, glTex gl.Texture, texSize int) {
 	img, _ := DrawStringRGBA(tSize, color.RGBA{255, 255, 255, 255}, str)
-	SaveImage(img, "texttest.png")
+	//SaveImage(img, "texttest.png")
 
 	buff := PaintTexture(img, nil, int(texSize))
 	//DumpBuff(buff, uint(w), uint(w))
