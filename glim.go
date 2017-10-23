@@ -268,6 +268,7 @@ func Rtt(glctx gl.Context, rtt_frameBuff gl.Framebuffer, rtt_tex gl.Texture, tex
 	//checkGlError(glctx)
 	glctx.BindFramebuffer(gl.FRAMEBUFFER, gl.Framebuffer{0})
 	checkGlError(glctx)
+	glctx.DeleteRenderbuffer(depthbuffer) //FIXME - slow!
 	//log.Println("Finished Rtt")
 	//fmt.Printf("done \n")
 }
