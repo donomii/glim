@@ -2,6 +2,7 @@
 package glim
 
 import (
+
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -34,7 +35,7 @@ func LoadFont(fileName string) *truetype.Font {
 		file, err := os.Open(fmt.Sprintf("%v%v%v", folderPath, string(os.PathSeparator), fileName))
 		if err != nil {
 			//log.Fatal(err)
-			log.Printf("Could not open %v, exiting because the go mobile team do not understand the concept of 'cross-paltform'\n", fmt.Sprintf("%v%v%v", folderPath, string(os.PathSeparator), fileName))
+			log.Printf("Could not open %v, exiting because the go mobile team do not understand the concept of 'cross-platform'\n", fmt.Sprintf("%v%v%v", folderPath, string(os.PathSeparator), fileName))
 			panic("Go mobile sucks")
 		} else {
 			defer file.Close()

@@ -316,8 +316,8 @@ func checkGlError(glctx gl.Context) {
 	err := glctx.GetError()
 	if err > 0 {
 		errStr := fmt.Sprintf("GLerror: %v\n", err)
-		fmt.Printf(errStr)
-		panic(errStr)
+		log.Printf(errStr)
+		//panic(errStr)
 	}
 }
 
