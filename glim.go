@@ -164,6 +164,19 @@ func SaveImage(m *image.RGBA, filename string) {
 	png.Encode(f, m)
 }
 
+//Copies an image 
+func ImageToGFormat(texWidth, texHeight int, buff []byte) image.Image {
+	m := image.NewNRGBA(image.Rectangle{image.Point{0, 0}, image.Point{int(texWidth), int(texHeight)}})
+	if buff != nil {
+		for y := 0; y < texHeight; y++ {
+			for x := 0; x < texWidth; x++ {
+				i := (x + y*texWidth) * 4
+				m.Set(int(x), int(texHeight-y), color.NRGBA{uint8(buff[i]), uint8(buff[i+1]), uint8(buff[i+2]), 255})
+			}
+		}
+	}
+	return m
+}
 //Saves a 32 bit RGBA byte array to a PNG file
 func SaveBuff(texWidth, texHeight int, buff []byte, filename string) {
 	m := image.NewNRGBA(image.Rectangle{image.Point{0, 0}, image.Point{int(texWidth), int(texHeight)}})
