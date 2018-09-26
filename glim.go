@@ -59,16 +59,25 @@ func ScreenShot(glctx gl.Context, filename string) {
 //
 //Returns the array, modified in place.  If u8Pix is nil or texWidth is 0, it creates a new texture array and returns that.  Texture is assumed to be square.
 func PaintTexture(img image.Image, u8Pix []uint8, clientWidth int) []uint8 {
+	out, _, _ := GFormatToImage(img, u8Pix, 0,0)
+	return out
+}
+func GFormatToImage(img image.Image, u8Pix []uint8, clientWidth, clientHeight int) ([]uint8, int, int) {
 	bounds := img.Bounds()
 	newW := bounds.Max.X
 	newH := bounds.Max.Y
 
-	//if uint(newW) != clientWidth || uint(newH) != clientWidth {
-	if (int(newW) > clientWidth) || (int(newH) > clientWidth) {
+	if int(clientWidth) == 0 {
+		clientWidth = newW
+	}
+	if int(clientHeight) == 0 {
+		clientHeight = newH
+	}
+	if (int(newW) > clientWidth) || (int(newH) > clientHeight) {
 		panic(fmt.Sprintf("ClientWidth (%v) is not large enough for image of width(%v) and height(%v)", clientWidth, newW, newH))
 	}
 	if u8Pix == nil {
-		dim := clientWidth*clientWidth*4 + 4
+		dim := clientWidth*clientHeight*4 + 4
 		u8Pix = make([]uint8, dim, dim)
 	}
 
@@ -83,7 +92,7 @@ func PaintTexture(img image.Image, u8Pix []uint8, clientWidth int) []uint8 {
 			u8Pix[start+3] = uint8(a * 255 / 65535)
 		}
 	}
-	return u8Pix
+	return u8Pix, clientWidth, clientHeight
 }
 
 //The core of ScreenShot, it copies the display into a RGBA byte array
@@ -171,12 +180,27 @@ func ImageToGFormat(texWidth, texHeight int, buff []byte) image.Image {
 		for y := 0; y < texHeight; y++ {
 			for x := 0; x < texWidth; x++ {
 				i := (x + y*texWidth) * 4
-				m.Set(int(x), int(texHeight-y), color.NRGBA{uint8(buff[i]), uint8(buff[i+1]), uint8(buff[i+2]), 255})
+				m.Set(int(x), int(texHeight-y), color.NRGBA{uint8(buff[i]), uint8(buff[i+1]), uint8(buff[i+2]), uint8(buff[i+3])})
 			}
 		}
 	}
 	return m
 }
+
+//Copies an image 
+func ImageToGFormatRGBA(texWidth, texHeight int, buff []byte) *image.RGBA {
+	m := image.NewRGBA(image.Rectangle{image.Point{0, 0}, image.Point{int(texWidth), int(texHeight)}})
+	if buff != nil {
+		for y := 0; y < texHeight; y++ {
+			for x := 0; x < texWidth; x++ {
+				i := (x + y*texWidth) * 4
+				m.Set(int(x), int(texHeight-y), color.NRGBA{uint8(buff[i]), uint8(buff[i+1]), uint8(buff[i+2]), uint8(buff[i+3])})
+			}
+		}
+	}
+	return m
+}
+
 //Saves a 32 bit RGBA byte array to a PNG file
 func SaveBuff(texWidth, texHeight int, buff []byte, filename string) {
 	m := image.NewNRGBA(image.Rectangle{image.Point{0, 0}, image.Point{int(texWidth), int(texHeight)}})
@@ -185,7 +209,7 @@ func SaveBuff(texWidth, texHeight int, buff []byte, filename string) {
 		for y := 0; y < texHeight; y++ {
 			for x := 0; x < texWidth; x++ {
 				i := (x + y*texWidth) * 4
-				m.Set(int(x), int(texHeight-y), color.NRGBA{uint8(buff[i]), uint8(buff[i+1]), uint8(buff[i+2]), 255})
+				m.Set(int(x), int(texHeight-y), color.NRGBA{uint8(buff[i]), uint8(buff[i+1]), uint8(buff[i+2]), uint8(buff[i+3])})
 				//if buff[i]>0 { fmt.Printf("Found colour\n") }
 				//if buff[i+1]>0 { fmt.Printf("Found colour\n") }
 				//if buff[i+2]>0 { fmt.Printf("Found colour\n") }
@@ -305,7 +329,7 @@ func DumpBuff(buff []uint8, width, height uint) {
 
 //Renders a string into a openGL texture.  No guarantees are made that the text will fit
 func String2Tex(glctx gl.Context, str string, tSize float64, glTex gl.Texture, texSize int) {
-	img, _ := DrawStringRGBA(tSize, color.RGBA{255, 255, 255, 255}, str)
+	img, _ := DrawStringRGBA(tSize, color.RGBA{255, 255, 255, 255}, str, "f1.ttf")
 	//SaveImage(img, "texttest.png")
 
 	buff := PaintTexture(img, nil, int(texSize))
@@ -321,7 +345,7 @@ func UploadTex(glctx gl.Context, glTex gl.Texture, w, h int, buff []uint8) {
 	glctx.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 	glctx.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
 
-	glctx.TexImage2D(gl.TEXTURE_2D, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, buff)
+	//glctx.TexImage2D(gl.TEXTURE_2D, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, buff) //FIXME
 	glctx.GenerateMipmap(gl.TEXTURE_2D)
 }
 
@@ -401,7 +425,7 @@ func GenTextureOnFramebuffer(glctx gl.Context, f gl.Framebuffer, w, h int, forma
 	checkGlError(glctx)
 
 	log.Printf("Creating texture of width %v and height %v", w, h)
-	glctx.TexImage2D(gl.TEXTURE_2D, 0, w, h, format, gl.UNSIGNED_BYTE, nil)
+	//glctx.TexImage2D(gl.TEXTURE_2D, 0, w, h, format, gl.UNSIGNED_BYTE, nil) //FixME
 	checkGlError(glctx)
 	//glctx.TexImage2D(gl.TEXTURE_2D, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, nil)
 
@@ -438,7 +462,7 @@ func ClearAllCaches() {
 //Creates a texture and draws a string to it
 //
 //FIXME some fonts might not compeletely fit in the texture (usually the decorative ones which extend into another letter)
-func DrawStringRGBA(txtSize float64, fontColor color.RGBA, txt string) (*image.RGBA, *font.Face) {
+func DrawStringRGBA(txtSize float64, fontColor color.RGBA, txt, fontfile string) (*image.RGBA, *font.Face) {
 	//log.Printf("Drawing text (%v), colour (%v), size(%v)\n", txt, fontColor, txtSize)
 	cacheKey := fmt.Sprintf("%v,%v,%v", txtSize, fontColor, txt)
 	if renderCache == nil {
@@ -452,13 +476,13 @@ func DrawStringRGBA(txtSize float64, fontColor color.RGBA, txt string) (*image.R
 	if ok && ok1 {
 		return im, face
 	}
-	txtFont := LoadFont("f1.ttf")
+	txtFont := LoadFont(fontfile)
 	d := &font.Drawer{
 		Src: image.NewUniform(fontColor), // 字体颜色
 		Face: truetype.NewFace(txtFont, &truetype.Options{
 			Size:    txtSize,
-			DPI:     72,
-			Hinting: font.HintingNone,
+			DPI:     96,
+			Hinting: font.HintingFull,
 		}),
 	}
 	fface := d.Face
@@ -595,7 +619,7 @@ func MoveInBounds(v, min, max, charDim, charAdv, linAdv Vec2) (newPos Vec2) {
 //Get the maximum pixel size needed to hold a string
 func GetGlyphSize(size float64, str string) (int, int) {
 	_, str_size := utf8.DecodeRuneInString(str)
-	img, _ := DrawStringRGBA(size, color.RGBA{1.0, 1.0, 1.0, 1.0}, str[0:str_size])
+	img, _ := DrawStringRGBA(size, color.RGBA{1.0, 1.0, 1.0, 1.0}, str[0:str_size], "f1.ttf")
 	XmaX, YmaX := img.Bounds().Max.X, img.Bounds().Max.Y
 	if XmaX > 4000 {
 		panic("X can't be that big")
@@ -718,7 +742,7 @@ func RenderPara(f *FormatParams, xpos, ypos, orig_xpos, orig_ypos, maxX, maxY, c
 				if wobblyMode {
 					ytweak = int(math.Sin(float64(xpos)) * 5.0)
 				}
-				img, face := DrawStringRGBA(f.FontSize, *foreGround, v)
+				img, face := DrawStringRGBA(f.FontSize, *foreGround, v, "f1.ttf")
 				XmaX, YmaX := img.Bounds().Max.X, img.Bounds().Max.Y
 				imgBytes := img.Pix
 				//imgBytes := Rotate270(XmaX, YmaX, img.Pix)
@@ -891,7 +915,7 @@ func PasteImg(img *image.RGBA, xpos, ypos, clientWidth, clientHeight int, u8Pix 
 }
 
 func PasteText(tSize float64, xpos, ypos, clientWidth, clientHeight int, text string, u8Pix []uint8, transparent bool) {
-	img, _ := DrawStringRGBA(tSize, color.RGBA{255, 255, 255, 255}, text)
+	img, _ := DrawStringRGBA(tSize, color.RGBA{255, 255, 255, 255}, text, "f1.ttf")
 	po2 := int(MaxI(NextPo2(img.Bounds().Max.X), NextPo2(img.Bounds().Max.Y)))
 	//log.Printf("Chose texture size: %v\n", po2)
 	wordBuff := PaintTexture(img, nil, po2)
@@ -915,8 +939,8 @@ func NextPo2(n int) int {
 	return int(math.Pow(2, math.Ceil(math.Log2(float64(n)))))
 }
 
-//Rotates a 32bit byte array into a new byte array.  The target array will be created with the correct dimensions
-func Rotate270(srcW, srcH int, src []byte) []byte {
+//Rotate a 32bit byte array into a new byte array.  The target array will be created with the correct dimensions
+func Rotate90(srcW, srcH int, src []byte) []byte {
 	//log.Printf("Rotating image (%v,%v)\n",srcW, srcH)
 	dstW := srcH
 	dstH := srcW
@@ -925,6 +949,28 @@ func Rotate270(srcW, srcH int, src []byte) []byte {
 	for dstY := 0; dstY < dstH; dstY++ {
 		for dstX := 0; dstX < dstW; dstX++ {
 			srcX := dstY
+			//srcY := dstW - dstX - 1
+			srcY := dstX
+
+			srcOff := srcY*srcW*4 + srcX*4
+			dstOff := dstY*dstW*4 + dstX*4
+
+			copy(dst[dstOff:dstOff+4], src[srcOff:srcOff+4])
+		}
+	}
+
+	return dst
+}
+//Rotate a 32bit byte array into a new byte array.  The target array will be created with the correct dimensions
+func Rotate270(srcW, srcH int, src []byte) []byte {
+	//log.Printf("Rotating image (%v,%v)\n",srcW, srcH)
+	dstW := srcH
+	dstH := srcW
+	dst := make([]byte, dstW*dstH*4)
+
+	for dstY := 0; dstY < dstH; dstY++ {
+		for dstX := 0; dstX < dstW; dstX++ {
+			srcX := dstH - dstY
 			srcY := dstW - dstX - 1
 			//srcY := dstX
 
@@ -936,4 +982,20 @@ func Rotate270(srcW, srcH int, src []byte) []byte {
 	}
 
 	return dst
+}
+
+//Turn all pixels of a colour into transparent pixels
+//
+//i.e. set the alpha to zero if the RGB matches the colour
+//
+//The alpha value of the input colour is ignored
+func MakeTransparent(m []byte, col color.RGBA) []byte {
+	for i:=0; i<len(m); i=i+4 {
+		if m[i]  ==  col.R ||
+		   m[i+1] ==  col.B ||
+		   m[i+2] == col.G {
+			m[i+3] = 0
+		}
+	}
+	return m
 }
