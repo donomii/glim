@@ -2,7 +2,8 @@
 package glim
 
 import (
-
+	_ "golang.org/x/image/font/gofont/goregular"
+	"golang.org/x/image/font/gofont/gomono"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -24,6 +25,10 @@ func LoadFont(fileName string) *truetype.Font {
 	if ok {
 		return im
 	}
+
+	txtFont, _ := truetype.Parse(gomono.TTF)
+	fontCache[fileName] = txtFont
+	return txtFont
 
 	var f io.Reader
 	folderPath, err := osext.ExecutableFolder()
