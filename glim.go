@@ -345,7 +345,7 @@ func UploadTex(glctx gl.Context, glTex gl.Texture, w, h int, buff []uint8) {
 	glctx.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 	glctx.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
 
-	//glctx.TexImage2D(gl.TEXTURE_2D, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, buff) //FIXME
+	glctx.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, gl.RGBA, gl.UNSIGNED_BYTE, buff)
 	glctx.GenerateMipmap(gl.TEXTURE_2D)
 }
 
@@ -425,9 +425,9 @@ func GenTextureOnFramebuffer(glctx gl.Context, f gl.Framebuffer, w, h int, forma
 	checkGlError(glctx)
 
 	log.Printf("Creating texture of width %v and height %v", w, h)
-	//glctx.TexImage2D(gl.TEXTURE_2D, 0, w, h, format, gl.UNSIGNED_BYTE, nil) //FixME
+	glctx.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, format, gl.UNSIGNED_BYTE, nil)
 	checkGlError(glctx)
-	//glctx.TexImage2D(gl.TEXTURE_2D, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, nil)
+	glctx.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, gl.RGBA, gl.UNSIGNED_BYTE, nil)
 
 	glctx.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, t, 0)
 	checkGlError(glctx)
