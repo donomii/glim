@@ -3,26 +3,15 @@ package glim
 
 import "math"
 import (
-	"image/draw"
 	_ "image/jpeg"
 	_ "image/png"
 	"strings"
 	"unicode"
 	"unicode/utf8"
 
-	"fmt"
-	"log"
-	"os"
 
-	"github.com/golang/freetype/truetype"
-	"golang.org/x/image/font"
-	"golang.org/x/image/math/fixed"
-
-	"golang.org/x/mobile/gl"
-
-	"image"
 	"image/color"
-	"image/png"
+	
 )
 
 
