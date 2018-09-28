@@ -6,8 +6,7 @@ import (
 	"image/draw"
 	_ "image/jpeg"
 	_ "image/png"
-	"strings"
-	"unicode"
+	
 	"unicode/utf8"
 
 	"fmt"
@@ -669,15 +668,17 @@ func Rotate90(srcW, srcH int, src []byte) []byte {
 }
 //Rotate a 32bit byte array into a new byte array.  The target array will be created with the correct dimensions
 func Rotate270(srcW, srcH int, src []byte) []byte {
-	//log.Printf("Rotating image (%v,%v)\n",srcW, srcH)
+	log.Printf("Rotating image (%v,%v)\n",srcW, srcH)
 	dstW := srcH
 	dstH := srcW
 	dst := make([]byte, dstW*dstH*4)
 
 	for dstY := 0; dstY < dstH; dstY++ {
 		for dstX := 0; dstX < dstW; dstX++ {
-			srcX := dstH - dstY
-			srcY := dstW - dstX - 1
+		//log.Printf("dstX: %v, dstY: %v\n", dstX, dstY)
+			//srcX := dstH - dstY  -1
+			srcX := dstY
+			srcY := dstW - dstX -1
 			//srcY := dstX
 
 			srcOff := srcY*srcW*4 + srcX*4
