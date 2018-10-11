@@ -3,12 +3,13 @@ package glim
 
 import "math"
 import (
+"regexp"
 	_ "image/jpeg"
 	_ "image/png"
 	"strings"
 	"unicode"
 	"unicode/utf8"
-
+//"fmt"
 
 	"image/color"
 	
@@ -90,19 +91,21 @@ func InBounds(v, min, max Vec2) bool {
 }
 
 //Move v to the closest point inside the box defined by min.max
-func MoveInBounds(v, min, max, charDim, charAdv, linAdv Vec2) (newPos Vec2) {
+func MoveInBounds(v, min, max, charDim, charAdv, linAdv Vec2, attempts int) (newPos Vec2) {
+	attempts = attempts -1
+	if attempts < 0 { return v }
 	//fmt.Printf("pos: (%v), min: (%v), max: (%v), charDim: (%v)\n",v, min, max, charDim)
 	if v.X < min.X {
-		return MoveInBounds(Vec2{v.X + 1, v.Y}, min, max, charDim, charAdv, linAdv)
+		return MoveInBounds(Vec2{v.X + 1, v.Y}, min, max, charDim, charAdv, linAdv, attempts)
 	}
 	if v.Y < min.Y { //FIXME?
-		return MoveInBounds(Vec2{v.X, v.Y + 1}, min, max, charDim, charAdv, linAdv)
+		return MoveInBounds(Vec2{v.X, v.Y + 1}, min, max, charDim, charAdv, linAdv, attempts)
 	}
 	if v.X+charDim.X > max.X {
-		return MoveInBounds(Vec2{v.X - 1, v.Y}, min, max, charDim, charAdv, linAdv)
+		return MoveInBounds(Vec2{v.X - 1, v.Y}, min, max, charDim, charAdv, linAdv, attempts)
 	}
 	if v.Y+charDim.Y > max.Y {
-		return MoveInBounds(Vec2{v.X, v.Y - 1}, min, max, charDim, charAdv, linAdv)
+		return MoveInBounds(Vec2{v.X, v.Y - 1}, min, max, charDim, charAdv, linAdv, attempts)
 	}
 	return v
 }
@@ -119,7 +122,7 @@ func CopyFormatter(inF *FormatParams) *FormatParams {
 //This was a bad idea.  Instead of all the if statements, we should just assume everything is left-to-right, top-to-bottom, and then rotate the entire block afterwards (we will also have to rotate the characters around their own center)
 //
 //Return the cursor position (number of characters from start of text) that is closest to the mouse cursor (cursorX, cursorY)
-func RenderPara(f *FormatParams, xpos, ypos, orig_xpos, orig_ypos, maxX, maxY, clientWidth, clientHeight, cursorX, cursorY int, u8Pix []uint8, text string, transparent bool, doDraw bool, showCursor bool) (int, int, int) {
+func RenderPara(f *FormatParams, xpos, ypos, minX, minY, maxX, maxY, clientWidth, clientHeight, cursorX, cursorY int, u8Pix []uint8, text string, transparent bool, doDraw bool, showCursor bool) (int, int, int) {
 	cursorDist := 9999999
 	seekCursorPos := 0
 	vert := f.Vertical
@@ -140,14 +143,14 @@ func RenderPara(f *FormatParams, xpos, ypos, orig_xpos, orig_ypos, maxX, maxY, c
 		f.FontSize = orig_fontSize
 		SanityCheck(f, text)
 	}()
-	//xpos := orig_xpos
-	//ypos := orig_ypos
+	//xpos := minX
+	//ypos := minY
 	if vert {
 		xpos = maxX
 	}
 	gx, gy := GetGlyphSize(f.FontSize, text)
 	//fmt.Printf("Chose position %v, maxX: %v\n", pos, maxX)
-	pos := MoveInBounds(Vec2{xpos, ypos}, Vec2{orig_xpos, orig_ypos}, Vec2{maxX, maxY}, Vec2{gx, gy}, Vec2{0, 1}, Vec2{-1, 0})
+	pos := MoveInBounds(Vec2{xpos, ypos}, Vec2{minX, minY}, Vec2{maxX, maxY}, Vec2{gx, gy}, Vec2{0, 1}, Vec2{-1, 0}, 10)
 	xpos = pos.X
 	ypos = pos.Y
 	maxHeight := 0
@@ -207,10 +210,10 @@ func RenderPara(f *FormatParams, xpos, ypos, orig_xpos, orig_ypos, maxX, maxY, c
 		if string(text[i]) == "\n" {
 			if vert {
 				xpos = xpos - maxHeight
-				ypos = orig_ypos
+				ypos = minY
 			} else {
 				ypos = ypos + maxHeight
-				xpos = orig_xpos
+				xpos = minX
 				if i > 0 && string(text[i-1]) != "\n" {
 					maxHeight = 12 //FIXME
 				}
@@ -246,7 +249,7 @@ func RenderPara(f *FormatParams, xpos, ypos, orig_xpos, orig_ypos, maxX, maxY, c
 						f.LastDrawnCharPos = i - 1
 						return seekCursorPos, xpos, ypos
 					} else {
-						pos := MoveInBounds(Vec2{xpos, ypos}, Vec2{orig_xpos, orig_ypos}, Vec2{maxX, maxY}, Vec2{gx, gy}, Vec2{0, 1}, Vec2{-1, 0})
+						pos := MoveInBounds(Vec2{xpos, ypos}, Vec2{minX, minY}, Vec2{maxX, maxY}, Vec2{gx, gy}, Vec2{0, 1}, Vec2{-1, 0}, 10)
 						xpos = pos.X
 						ypos = pos.Y
 					}
@@ -255,7 +258,7 @@ func RenderPara(f *FormatParams, xpos, ypos, orig_xpos, orig_ypos, maxX, maxY, c
 					if !vert {
 						ypos = ypos + maxHeight
 						maxHeight = 0
-						xpos = orig_xpos
+						xpos = minX
 						f.Line++
 						f.StartLinePos = i
 					}
@@ -265,7 +268,7 @@ func RenderPara(f *FormatParams, xpos, ypos, orig_xpos, orig_ypos, maxX, maxY, c
 					if vert {
 						xpos = xpos - maxHeight
 						maxHeight = 0
-						ypos = orig_ypos
+						ypos = minY
 						f.Line++
 						f.StartLinePos = i
 					} else {
@@ -273,7 +276,7 @@ func RenderPara(f *FormatParams, xpos, ypos, orig_xpos, orig_ypos, maxX, maxY, c
 						return seekCursorPos, xpos, ypos
 					}
 				}
-				pos := MoveInBounds(Vec2{xpos, ypos}, Vec2{orig_xpos, orig_ypos}, Vec2{maxX, maxY}, Vec2{XmaX, YmaX}, Vec2{0, 1}, Vec2{-1, 0})
+				pos := MoveInBounds(Vec2{xpos, ypos}, Vec2{minX, minY}, Vec2{maxX, maxY}, Vec2{XmaX, YmaX}, Vec2{0, 1}, Vec2{-1, 0}, 10)
 				xpos = pos.X
 				ypos = pos.Y
 
@@ -307,6 +310,198 @@ func RenderPara(f *FormatParams, xpos, ypos, orig_xpos, orig_ypos, maxX, maxY, c
 	SanityCheck(f, text)
 	return seekCursorPos, xpos, ypos
 }
+
+func isNewLine(v string) bool {
+	return  (v == "\n") || (v == `\n`)
+}
+
+func RenderTokenPara(f *FormatParams, xpos, ypos, minX, minY, maxX, maxY, clientWidth, clientHeight, cursorX, cursorY int, u8Pix []uint8, tokens [][]string, transparent bool, doDraw bool, showCursor bool) (int, int, int) {
+	cursorDist := 9999999
+	seekCursorPos := 0
+	vert := f.Vertical
+	//orig_colour := f.Colour
+	foreGround := f.Colour
+	//selectColour := color.RGBA{255, 1, 1, 255}
+	//highlightColour := color.RGBA{1, 255, 1, 255}
+	//colSwitch := false
+	if f.TailBuffer {
+		//f.Cursor = len(text)
+		//scrollToCursor(f, text)  //Use pageup function, once it is fast enough
+	}
+	//log.Printf("Cursor: %v\n", f.Cursor)
+	var letters []string 
+	for _,v := range tokens {
+		re := regexp.MustCompile(`\\t`)
+		v := re.ReplaceAllLiteralString(v[1], "    ")
+		letters = append(letters, v)
+	}
+	letters = append(letters, " ")
+	orig_fontSize := f.FontSize
+	defer func() {
+		f.FontSize = orig_fontSize
+		//SanityCheck(f, text)
+	}()
+	//xpos := minX
+	//ypos := minY
+	if vert {
+		xpos = maxX
+	}
+	gx, gy := GetGlyphSize(f.FontSize, letters[0])
+	//fmt.Printf("Chose position %v, maxX: %v\n", pos, maxX)
+	pos := MoveInBounds(Vec2{xpos, ypos}, Vec2{minX, minY}, Vec2{maxX, maxY}, Vec2{gx, gy}, Vec2{0, 1}, Vec2{-1, 0}, 10)
+	xpos = pos.X
+	ypos = pos.Y
+	maxHeight := 0
+	letterWidth := 100
+	wobblyMode := false
+	if f.Cursor > len(letters) {
+		f.Cursor = len(letters)
+	}
+	//sanityCheck(f,txt)
+	for i, v := range letters {
+		//fmt.Printf("%v: '%v'(%V)\n", i , v, v)
+		if isNewLine(v) { v = "\n" }
+		if v == `\t` { v = "    " }
+		if i < f.FirstDrawnCharPos {
+			continue
+		}
+		if (f.Cursor == i) && doDraw {
+			DrawCursor(xpos, ypos, maxHeight, clientWidth, u8Pix)
+		}
+		if i >= len(letters)-1 {
+			continue
+		}
+		//foreGround = orig_colour
+
+		if unicode.IsSpace([]rune(v)[0]) {
+			//if i>0 && letters[i-1] == " " {
+			//f.Colour = &color.RGBA{255,0,0,255}
+			//f.FontSize = f.FontSize*1.2
+			////log.Printf("Oversize start for %v at %v\n", v, i)
+			//} else {
+			//f.Colour = &color.RGBA{1,1,1,255}
+			//}
+			//colSwitch = !colSwitch
+			//if colSwitch {
+			//	foreGround = &highlightColour
+			//} else {
+			//	foreGround = orig_colour
+			//}
+		}
+		
+		
+		if v == " " || isNewLine(v) {
+			f.FontSize = orig_fontSize
+			//log.Printf("Oversize end for %v at %v\n", v, i)
+		}
+		if isNewLine(v) {
+			if vert {
+				xpos = xpos - maxHeight
+				ypos = minY
+			} else {
+				ypos = ypos + maxHeight
+				xpos = minX
+				if i > 0 && !isNewLine(letters[i-1]) { 
+					maxHeight = 12 //FIXME
+				}
+			}
+			//fmt.Printf("Newline char forces line++\n")
+			f.Line = f.Line + 1
+			f.StartLinePos = i
+			if f.Cursor == i && showCursor {
+				DrawCursor(xpos, ypos, maxHeight, clientWidth, u8Pix)
+			}
+		} else {
+			if i >= f.FirstDrawnCharPos {
+				ytweak := 0
+				if wobblyMode {
+					ytweak = int(math.Sin(float64(xpos)) * 5.0)
+				}
+				img, face := DrawStringRGBA(f.FontSize, *foreGround, v, "f1.ttf")
+				XmaX, YmaX := img.Bounds().Max.X, img.Bounds().Max.Y
+				imgBytes := img.Pix
+				//imgBytes := Rotate270(XmaX, YmaX, img.Pix)
+				//XmaX, YmaX = YmaX, XmaX
+				fa := *face
+				//glyph, _ := utf8.DecodeRuneInString(v)
+				//letterWidth_F, _ := fa.GlyphAdvance(glyph)
+				//letterWidth = Fixed2int(letterWidth_F)
+				//fuckedRect, _, _ := fa.GlyphBounds(glyph)
+				//letterHeight := fixed2int(fuckedRect.Max.Y)
+				letterHeight := Fixed2int(fa.Metrics().Height)
+				letterWidth := XmaX /2
+				//letterHeight = letterHeight
+
+				if vert && (xpos < 0) {
+					if vert {
+						f.LastDrawnCharPos = i - 1
+						return seekCursorPos, xpos, ypos
+					} else {
+						pos := MoveInBounds(Vec2{xpos, ypos}, Vec2{minX, minY}, Vec2{maxX, maxY}, Vec2{gx, gy}, Vec2{0, 1}, Vec2{-1, 0}, 10)
+						xpos = pos.X
+						ypos = pos.Y
+					}
+				}
+				if xpos+XmaX > maxX {
+					if !vert {
+						ypos = ypos + maxHeight
+						maxHeight = 0
+						//fmt.Printf("OOB X forces line++\n")
+						xpos = minX
+						f.Line++
+						f.StartLinePos = i
+					}
+				}
+
+				if (ypos+YmaX+ytweak+1 > maxY) || (ypos+ytweak < 0) {
+					if vert {
+						xpos = xpos - maxHeight
+						maxHeight = 0
+						ypos = minY
+						//fmt.Printf("OOB Y forces line++\n")
+						f.Line++
+						f.StartLinePos = i
+					} else {
+						f.LastDrawnCharPos = i - 1
+						return seekCursorPos, xpos, ypos
+					}
+				}
+				pos := MoveInBounds(Vec2{xpos, ypos}, Vec2{minX, minY}, Vec2{maxX, maxY}, Vec2{XmaX, YmaX}, Vec2{0, 1}, Vec2{-1, 0}, 10)
+				xpos = pos.X
+				ypos = pos.Y
+
+				if doDraw {
+					//PasteImg(img, xpos, ypos + ytweak, u8Pix, transparent)
+					//PasteBytes(XmaX, YmaX, imgBytes, xpos, ypos+ytweak, int(clientWidth), int(clientHeight), u8Pix, transparent)
+					PasteBytes(XmaX, YmaX, imgBytes, xpos, ypos+ytweak, int(clientWidth), int(clientHeight), u8Pix, true, false, true)
+				}
+
+				if f.Cursor == i && showCursor {
+					DrawCursor(xpos, ypos, maxHeight, clientWidth, u8Pix)
+				}
+
+				f.LastDrawnCharPos = i
+				maxHeight = MaxI(maxHeight, letterHeight)
+
+				if vert {
+					ypos += maxHeight
+				} else {
+					xpos += letterWidth
+				}
+			}
+		}
+		d := (cursorX-xpos+letterWidth)*(cursorX-xpos+letterWidth) + (cursorY-ypos-maxHeight/2)*(cursorY-ypos-maxHeight/2)
+		if d < cursorDist {
+			cursorDist = d
+			seekCursorPos = i
+		}
+
+	}
+	//SanityCheck(f, text)
+	return seekCursorPos, xpos, ypos
+}
+
+
 
 //Return the larger of two integers
 func MaxI(a, b int) int {
