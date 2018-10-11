@@ -19,7 +19,7 @@ import (
 //Holds all the configuration details for drawing a string into a texture.  This structure gets written to during the draw
 type FormatParams struct {
 	Colour            *color.RGBA //Text colour
-	Line              int
+	Line              int		  //The line number, i.e. the number of /n characters from the start
 	Cursor            int         //The cursor position, in characters from the start of the text
 	SelectStart       int         //Start of the selection box, counted from the start of document
 	SelectEnd         int         //End of the selection box, counted from the start of document
@@ -72,8 +72,8 @@ func SanityCheck(f *FormatParams, txt string) {
 
 }
 
-
-func InBounds(v, min, max, charDim Vec2) bool {
+//Is v inside the box defined by min and max?
+func InBounds(v, min, max Vec2) bool {
 	if v.X < min.X {
 		return false
 	}
@@ -89,15 +89,16 @@ func InBounds(v, min, max, charDim Vec2) bool {
 	return true
 }
 
+//Move v to the closest point inside the box defined by min.max
 func MoveInBounds(v, min, max, charDim, charAdv, linAdv Vec2) (newPos Vec2) {
 	//fmt.Printf("pos: (%v), min: (%v), max: (%v), charDim: (%v)\n",v, min, max, charDim)
 	if v.X < min.X {
 		return MoveInBounds(Vec2{v.X + 1, v.Y}, min, max, charDim, charAdv, linAdv)
 	}
-	if v.Y < min.Y {
+	if v.Y < min.Y { //FIXME?
 		return MoveInBounds(Vec2{v.X, v.Y + 1}, min, max, charDim, charAdv, linAdv)
 	}
-	if v.X+charDim.X > max.Y {
+	if v.X+charDim.X > max.X {
 		return MoveInBounds(Vec2{v.X - 1, v.Y}, min, max, charDim, charAdv, linAdv)
 	}
 	if v.Y+charDim.Y > max.Y {
@@ -106,7 +107,7 @@ func MoveInBounds(v, min, max, charDim, charAdv, linAdv Vec2) (newPos Vec2) {
 	return v
 }
 
-
+//Duplicate a formatter, that can be modified without changing the original
 func CopyFormatter(inF *FormatParams) *FormatParams {
 	out := NewFormatter()
 	*out = *inF
@@ -114,8 +115,9 @@ func CopyFormatter(inF *FormatParams) *FormatParams {
 }
 
 //Draw some text into a 32bit RGBA byte array, wrapping where needed.  Supports all the options I need for a basic word processor, including vertical text, and different sized lines
+//
 //This was a bad idea.  Instead of all the if statements, we should just assume everything is left-to-right, top-to-bottom, and then rotate the entire block afterwards (we will also have to rotate the characters around their own center)
-//Arabic will still need special code - better to separate into two completely different routines?
+//
 //Return the cursor position (number of characters from start of text) that is closest to the mouse cursor (cursorX, cursorY)
 func RenderPara(f *FormatParams, xpos, ypos, orig_xpos, orig_ypos, maxX, maxY, clientWidth, clientHeight, cursorX, cursorY int, u8Pix []uint8, text string, transparent bool, doDraw bool, showCursor bool) (int, int, int) {
 	cursorDist := 9999999
@@ -123,6 +125,8 @@ func RenderPara(f *FormatParams, xpos, ypos, orig_xpos, orig_ypos, maxX, maxY, c
 	vert := f.Vertical
 	orig_colour := f.Colour
 	foreGround := f.Colour
+	selectColour := color.RGBA{255, 1, 1, 255}
+	highlightColour := color.RGBA{1, 255, 1, 255}
 	colSwitch := false
 	if f.TailBuffer {
 		//f.Cursor = len(text)
@@ -175,7 +179,7 @@ func RenderPara(f *FormatParams, xpos, ypos, orig_xpos, orig_ypos, maxX, maxY, c
 			//}
 			colSwitch = !colSwitch
 			if colSwitch {
-				foreGround = &color.RGBA{255, 1, 1, 255}
+				foreGround = &highlightColour
 			} else {
 				foreGround = orig_colour
 			}
@@ -184,7 +188,7 @@ func RenderPara(f *FormatParams, xpos, ypos, orig_xpos, orig_ypos, maxX, maxY, c
 			nf := CopyFormatter(f)
 			nf.SelectStart = -1
 			nf.SelectEnd = -1
-			nf.Colour = &color.RGBA{255, 1, 1, 255}
+			nf.Colour = &selectColour
 			/*if i-1<f.SelectStart {
 			      _, xpos, ypos = RenderPara(nf, xpos, ypos, 0, 0, maxX, maxY, clientWidth, clientHeight, cursorX, cursorY, u8Pix, "{", transparent, doDraw, showCursor)
 			  }
