@@ -319,7 +319,7 @@ func RenderTokenPara(f *FormatParams, xpos, ypos, minX, minY, maxX, maxY, client
 	cursorDist := 9999999
 	seekCursorPos := 0
 	vert := f.Vertical
-	//orig_colour := f.Colour
+	orig_colour := f.Colour
 	foreGround := f.Colour
 	//selectColour := color.RGBA{255, 1, 1, 255}
 	//highlightColour := color.RGBA{1, 255, 1, 255}
@@ -329,12 +329,23 @@ func RenderTokenPara(f *FormatParams, xpos, ypos, minX, minY, maxX, maxY, client
 		//scrollToCursor(f, text)  //Use pageup function, once it is fast enough
 	}
 	//log.Printf("Cursor: %v\n", f.Cursor)
+	
+	punctuationColour := color.RGBA{255, 1, 1, 255}
+	nameColour := color.RGBA{1, 255, 1, 255}
+	builtinColour := color.RGBA{1, 1, 255, 255}
 	var letters []string 
 	for _,v := range tokens {
 		re := regexp.MustCompile(`\\t`)
 		v := re.ReplaceAllLiteralString(v[1], "    ")
 		letters = append(letters, v)
 	}
+	var markup []string 
+	for _,v := range tokens {
+		re := regexp.MustCompile(`\\t`)
+		v := re.ReplaceAllLiteralString(v[0], "    ")
+		 markup = append(markup, v)
+	}
+	
 	letters = append(letters, " ")
 	orig_fontSize := f.FontSize
 	defer func() {
@@ -359,6 +370,23 @@ func RenderTokenPara(f *FormatParams, xpos, ypos, minX, minY, maxX, maxY, client
 	}
 	//sanityCheck(f,txt)
 	for i, v := range letters {
+	
+		styleName := markup[i]
+		
+		foreGround = orig_colour
+		if styleName == "Token.Name" {
+			foreGround = &nameColour
+		} 
+		
+		if styleName == "Token.Punctuation" {
+			foreGround = &punctuationColour
+		} 
+		
+		
+		if styleName == "Token.Name.Builtin" {
+			foreGround = &builtinColour
+		} 
+		
 		//fmt.Printf("%v: '%v'(%V)\n", i , v, v)
 		if isNewLine(v) { v = "\n" }
 		if v == `\t` { v = "    " }
