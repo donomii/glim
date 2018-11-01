@@ -6,7 +6,7 @@ import (
 	"image/draw"
 	_ "image/jpeg"
 	_ "image/png"
-	
+
 	"unicode/utf8"
 
 	"fmt"
@@ -58,7 +58,7 @@ func ScreenShot(glctx gl.Context, filename string) {
 //
 //Returns the array, modified in place.  If u8Pix is nil or texWidth is 0, it creates a new texture array and returns that.  Texture is assumed to be square.
 func PaintTexture(img image.Image, u8Pix []uint8, clientWidth int) []uint8 {
-	out, _, _ := GFormatToImage(img, u8Pix, 0,0)
+	out, _, _ := GFormatToImage(img, u8Pix, 0, 0)
 	return out
 }
 func GFormatToImage(img image.Image, u8Pix []uint8, clientWidth, clientHeight int) ([]uint8, int, int) {
@@ -172,7 +172,7 @@ func SaveImage(m *image.RGBA, filename string) {
 	png.Encode(f, m)
 }
 
-//Copies an image 
+//Copies an image
 func ImageToGFormat(texWidth, texHeight int, buff []byte) image.Image {
 	m := image.NewNRGBA(image.Rectangle{image.Point{0, 0}, image.Point{int(texWidth), int(texHeight)}})
 	if buff != nil {
@@ -186,7 +186,7 @@ func ImageToGFormat(texWidth, texHeight int, buff []byte) image.Image {
 	return m
 }
 
-//Copies an image 
+//Copies an image
 func ImageToGFormatRGBA(texWidth, texHeight int, buff []byte) *image.RGBA {
 	m := image.NewRGBA(image.Rectangle{image.Point{0, 0}, image.Point{int(texWidth), int(texHeight)}})
 	if buff != nil {
@@ -295,7 +295,7 @@ func Rtt(glctx gl.Context, rtt_frameBuff gl.Framebuffer, rtt_tex gl.Texture, tex
 	if filename != "" {
 		buff := CopyFrameBuff(glctx, rtt_frameBuff, texWidth, texHeight)
 		checkGlError(glctx)
-		SaveBuff(int(texWidth), int(texHeight), buff, fmt.Sprintf(filename + "_%04d.png", fname_int)) //FIXME - make the numbers an option
+		SaveBuff(int(texWidth), int(texHeight), buff, fmt.Sprintf(filename+"_%04d.png", fname_int)) //FIXME - make the numbers an option
 		fname_int += 1
 	}
 	glctx.BindTexture(gl.TEXTURE_2D, gl.Texture{0})
@@ -666,19 +666,20 @@ func Rotate90(srcW, srcH int, src []byte) []byte {
 
 	return dst
 }
+
 //Rotate a 32bit byte array into a new byte array.  The target array will be created with the correct dimensions
 func Rotate270(srcW, srcH int, src []byte) []byte {
-	log.Printf("Rotating image (%v,%v)\n",srcW, srcH)
+	//log.Printf("Rotating image (%v,%v)\n",srcW, srcH)
 	dstW := srcH
 	dstH := srcW
 	dst := make([]byte, dstW*dstH*4)
 
 	for dstY := 0; dstY < dstH; dstY++ {
 		for dstX := 0; dstX < dstW; dstX++ {
-		//log.Printf("dstX: %v, dstY: %v\n", dstX, dstY)
+			//log.Printf("dstX: %v, dstY: %v\n", dstX, dstY)
 			//srcX := dstH - dstY  -1
 			srcX := dstY
-			srcY := dstW - dstX -1
+			srcY := dstW - dstX - 1
 			//srcY := dstX
 
 			srcOff := srcY*srcW*4 + srcX*4
@@ -690,7 +691,6 @@ func Rotate270(srcW, srcH int, src []byte) []byte {
 
 	return dst
 }
-
 
 //Rotate a 32bit byte array into a new byte array.  The target array will be created with the correct dimensions
 func FlipUp(srcW, srcH int, src []byte) []byte {
@@ -701,8 +701,8 @@ func FlipUp(srcW, srcH int, src []byte) []byte {
 
 	for dstY := 0; dstY < dstH; dstY++ {
 		for dstX := 0; dstX < dstW; dstX++ {
-			srcX := dstX 
-			srcY := dstH - dstY -1
+			srcX := dstX
+			srcY := dstH - dstY - 1
 			//srcY := dstX
 
 			srcOff := srcY*srcW*4 + srcX*4
@@ -715,17 +715,16 @@ func FlipUp(srcW, srcH int, src []byte) []byte {
 	return dst
 }
 
-
 //Turn all pixels of a colour into transparent pixels
 //
 //i.e. set the alpha to zero if the RGB matches the colour
 //
 //The alpha value of the input colour is ignored
 func MakeTransparent(m []byte, col color.RGBA) []byte {
-	for i:=0; i<len(m); i=i+4 {
-		if m[i]  ==  col.R ||
-		   m[i+1] ==  col.B ||
-		   m[i+2] == col.G {
+	for i := 0; i < len(m); i = i + 4 {
+		if m[i] == col.R ||
+			m[i+1] == col.B ||
+			m[i+2] == col.G {
 			m[i+3] = 0
 		}
 	}
