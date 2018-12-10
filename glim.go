@@ -139,14 +139,30 @@ func GDiff(m, m1 image.Image) int64 {
 		for x := bounds.Min.X; x < bounds.Max.X; x++ {
 			r, g, b, _ := m.At(x, y).RGBA()
 			r1, g1, b1, _ := m1.At(x, y).RGBA()
-			diff = diff + int64(Abs32(udiff(r>>8, r1>>8))+Abs32(udiff(g>>8, g1>>8))+Abs32(udiff(b>>8, b1>>8)))
+			diff = diff + int64(udiff(r>>8, r1>>8)+udiff(g>>8, g1>>8)+udiff(b>>8, b1>>8))
 		}
 	}
 	return diff
 }
 
-// Abs32 returns the absolute value of uint32 x.
-func Abs32(x uint32) uint32 {
+// Abs32 returns the absolute value of int32 x.
+func Abs32(x int32) int32 {
+	if x < 0 {
+		return -x
+	}
+	return x
+}
+
+// Abs8 returns the absolute value of int8 x.
+func Abs8(x int8) int8 {
+	if x < 0 {
+		return -x
+	}
+	return x
+}
+
+// AbsInt returns the absolute value of int x.
+func AbsInt(x int) int {
 	if x < 0 {
 		return -x
 	}
