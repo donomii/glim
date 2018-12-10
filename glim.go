@@ -26,7 +26,20 @@ import (
 
 type Thunk func()
 
+var renderCache map[string]*image.RGBA
+var faceCache map[string]*font.Face
+var fontCache map[string]*truetype.Font
+
+//Dump the rendercache, facecache and fontcache
+func ClearAllCaches() {
+	renderCache = map[string]*image.RGBA{}
+	faceCache = map[string]*font.Face{}
+	fontCache = map[string]*truetype.Font{}
+}
+
 //Return screen (or main window) size
+//
+//Will only work with x/mobile/gl I guess
 func ScreenSize(glctx gl.Context) (int, int) {
 	outbuff := []int32{0, 0, 0, 0}
 	glctx.GetIntegerv(outbuff, gl.VIEWPORT)
@@ -56,7 +69,9 @@ func ScreenShot(glctx gl.Context, filename string) {
 
 //Copies an image to a correctly-packed texture data array, where "correctly packed" means a byte array suitable for loading into OpenGL as a 32-bit RGBA byte blob
 //
-//Returns the array, modified in place.  If u8Pix is nil or texWidth is 0, it creates a new texture array and returns that.  Texture is assumed to be square.
+//Other formats are not currently supported, patches welcome, etc
+//
+//Returns the array, modified in place.  If u8Pix is nil or texWidth is 0, it creates a new texture array and returns that.  Texture is assumed to be square (this used to be required for OpenGL, not sure now?).
 func PaintTexture(img image.Image, u8Pix []uint8, clientWidth int) []uint8 {
 	out, _, _ := GFormatToImage(img, u8Pix, 0, 0)
 	return out
@@ -131,6 +146,8 @@ func udiff(a, b uint32) uint32 {
 //Returns a number representing the graphical difference between two images.
 //
 //This difference is calculated by comparing each pixel and summing the difference in colour
+//
+//This difference function is used in some other programs to power some approximation functions, it doesn't actually mean anything
 func GDiff(m, m1 image.Image) int64 {
 	bounds := m.Bounds()
 
@@ -166,13 +183,13 @@ func CopyFrameBuff(glctx gl.Context, rtt_frameBuff gl.Framebuffer, clientWidth, 
 }
 
 //Dumps a go image format thing to disk
-func SaveImage(m *image.RGBA, filename string) {
+func SaveImage(picture *image.RGBA, filename string) {
 	f, _ := os.OpenFile(filename, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0666)
 	defer f.Close()
-	png.Encode(f, m)
+	png.Encode(f, picture)
 }
 
-//Copies an image
+//Converts an image to google's image format, RGBA type
 func ImageToGFormat(texWidth, texHeight int, buff []byte) image.Image {
 	m := image.NewNRGBA(image.Rectangle{image.Point{0, 0}, image.Point{int(texWidth), int(texHeight)}})
 	if buff != nil {
@@ -186,7 +203,7 @@ func ImageToGFormat(texWidth, texHeight int, buff []byte) image.Image {
 	return m
 }
 
-//Copies an image
+//Converts an image to google's image format, NRGBA format
 func ImageToGFormatRGBA(texWidth, texHeight int, buff []byte) *image.RGBA {
 	m := image.NewRGBA(image.Rectangle{image.Point{0, 0}, image.Point{int(texWidth), int(texHeight)}})
 	if buff != nil {
@@ -200,7 +217,9 @@ func ImageToGFormatRGBA(texWidth, texHeight int, buff []byte) *image.RGBA {
 	return m
 }
 
-//Saves a 32 bit RGBA byte array to a PNG file
+//Saves a 32 bit RGBA format byte array to a PNG file
+//
+// i.e. 1 byte for each R,B,G,A
 func SaveBuff(texWidth, texHeight int, buff []byte, filename string) {
 	m := image.NewNRGBA(image.Rectangle{image.Point{0, 0}, image.Point{int(texWidth), int(texHeight)}})
 	if buff != nil {
@@ -235,7 +254,7 @@ var fname_int int
 //
 // If filename is not "", then Rtt will save the contents of the framebuffer to the filename, followed by a number for each frame.
 //
-//i.e. frambuffer 0 is active at the end of the call, so make sure you switch to the correct one before doing anymore drawing!  I should probably take that out, and figure out how to restore the currect framebuff
+//i.e. frambuffer 0 will be active at the end of the call, so make sure you switch to the correct one before doing anymore drawing!  I should probably take that out, and figure out how to restore the currect framebuff
 func Rtt(glctx gl.Context, rtt_frameBuff gl.Framebuffer, rtt_tex gl.Texture, texWidth, texHeight int, filename string, thunk Thunk) {
 	if texWidth != texHeight {
 		panic(fmt.Sprintf("You must provide equal width and height, you gave width: %v, height %v", texWidth, texHeight))
@@ -310,6 +329,8 @@ func Rtt(glctx gl.Context, rtt_frameBuff gl.Framebuffer, rtt_tex gl.Texture, tex
 }
 
 //Prints the contents of a 32bit RGBA byte array as ASCII text
+//
+//For debugging.  Any pixel with a red value over 128 will be drawn as "I", otherwise "_"
 func DumpBuff(buff []uint8, width, height uint) {
 	log.Printf("Dumping buffer with width, height %v,%v\n", width, height)
 	for y := uint(0); y < height; y++ {
@@ -362,42 +383,6 @@ func checkGlError(glctx gl.Context) {
 func GenTextureAndFramebuffer(glctx gl.Context, w, h int, format gl.Enum) (gl.Framebuffer, gl.Texture) {
 	f := glctx.CreateFramebuffer()
 	checkGlError(glctx)
-	/*glctx.BindFramebuffer(gl.FRAMEBUFFER, f)
-	glctx.ActiveTexture(gl.TEXTURE0)
-	t := glctx.CreateTexture()
-	log.Printf("Texture created: %v", t)
-
-	glctx.BindTexture(gl.TEXTURE_2D, t)
-	checkGlError(glctx)
-	glctx.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
-	checkGlError(glctx)
-	glctx.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
-	checkGlError(glctx)
-	glctx.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
-	checkGlError(glctx)
-	glctx.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
-	checkGlError(glctx)
-
-	glctx.TexImage2D(gl.TEXTURE_2D, 0, w, h, format, gl.UNSIGNED_INT, nil)
-	checkGlError(glctx)
-	//glctx.TexImage2D(gl.TEXTURE_2D, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, nil)
-
-	glctx.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, t, 0)
-	checkGlError(glctx)
-	*/
-
-	/*
-	   depthbuffer := glctx.CreateRenderbuffer()
-	   glctx.BindRenderbuffer(gl.RENDERBUFFER, depthbuffer)
-	   glctx.RenderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, w, h)
-	   glctx.FramebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, depthbuffer)
-	*/
-
-	//status := glctx.CheckFramebufferStatus(gl.FRAMEBUFFER)
-	//if status != gl.FRAMEBUFFER_COMPLETE {
-	//log.Fatal(fmt.Sprintf("Gentexture failed: Framebuffer status: %v\n", status))
-	//}
-	//glctx.BindFramebuffer(gl.FRAMEBUFFER, gl.Framebuffer{0})
 	return f, GenTextureOnFramebuffer(glctx, f, w, h, format)
 }
 
@@ -447,16 +432,6 @@ func GenTextureOnFramebuffer(glctx gl.Context, f gl.Framebuffer, w, h int, forma
 	return t
 }
 
-var renderCache map[string]*image.RGBA
-var faceCache map[string]*font.Face
-var fontCache map[string]*truetype.Font
-
-//Dump the rendercache, facecache and fontcache
-func ClearAllCaches() {
-	renderCache = map[string]*image.RGBA{}
-	faceCache = map[string]*font.Face{}
-	fontCache = map[string]*truetype.Font{}
-}
 
 //Creates a texture and draws a string to it
 //
@@ -599,6 +574,7 @@ func PasteBytes(srcWidth, srcHeight int, srcBytes []byte, xpos, ypos, dstWidth, 
 	}
 }
 
+//Pastes a go format image into a bag of bytes image
 func PasteImg(img *image.RGBA, xpos, ypos, clientWidth, clientHeight int, u8Pix []uint8, transparent bool) {
 	po2 := int(MaxI(NextPo2(img.Bounds().Max.X), NextPo2(img.Bounds().Max.Y)))
 	//log.Printf("Chose texture size: %v\n", po2)
@@ -619,6 +595,7 @@ func PasteImg(img *image.RGBA, xpos, ypos, clientWidth, clientHeight int, u8Pix 
 	}
 }
 
+//Write some text into a bag of bytes image.
 func PasteText(tSize float64, xpos, ypos, clientWidth, clientHeight int, text string, u8Pix []uint8, transparent bool) {
 	img, _ := DrawStringRGBA(tSize, color.RGBA{255, 255, 255, 255}, text, "f1.ttf")
 	po2 := int(MaxI(NextPo2(img.Bounds().Max.X), NextPo2(img.Bounds().Max.Y)))
@@ -692,7 +669,7 @@ func Rotate270(srcW, srcH int, src []byte) []byte {
 	return dst
 }
 
-//Rotate a 32bit byte array into a new byte array.  The target array will be created with the correct dimensions
+//Flips a 32bit byte array picture upside down.  Creates a target array with with the correct dimensions and returns it
 func FlipUp(srcW, srcH int, src []byte) []byte {
 	//log.Printf("Rotating image (%v,%v)\n",srcW, srcH)
 	dstW := srcW
