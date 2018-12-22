@@ -1,5 +1,5 @@
-[![Build Status](https://travis-ci.org/donomii/throff.svg?branch=master)](https://travis-ci.org/donomii/throff)
-[![GoDoc](https://godoc.org/github.com/donomii/throff?status.svg)](https://godoc.org/github.com/donomii/throff)
+[![Build Status](https://travis-ci.org/donomii/glim.svg?branch=master)](https://travis-ci.org/donomii/glim)
+[![GoDoc](https://godoc.org/github.com/donomii/glim?status.svg)](https://godoc.org/github.com/donomii/glim)
 
 # glim
 OpenGL IMage library - A collection of routines for common image/texture functions
