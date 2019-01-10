@@ -373,6 +373,15 @@ func String2Tex(glctx gl.Context, str string, tSize float64, glTex gl.Texture, t
 	UploadTex(glctx, glTex, texSize, texSize, buff)
 }
 
+//Takes []uint8 RGBA image data and uploads it to the graphics card as a new gl texture
+//
+//Returns the gl texture handle
+func UploadNewTex(glctx gl.Context, data []uint8, w, h int) gl.Texture {
+	tex := GenTexture(glctx, w, h, gl.RGBA)
+	UploadTex(glctx, tex, w, h, data)
+	return tex
+}
+
 //Will attempt to load the contents of a 32bit RGBA byte array into an existing openGL texture.  The texture will be uploaded with the right options for displaying text i.e. clamp_to_edge and filter nearest.
 func UploadTex(glctx gl.Context, glTex gl.Texture, w, h int, buff []uint8) {
 	glctx.BindTexture(gl.TEXTURE_2D, glTex)
@@ -402,11 +411,25 @@ func GenTextureAndFramebuffer(glctx gl.Context, w, h int, format gl.Enum) (gl.Fr
 	return f, GenTextureOnFramebuffer(glctx, f, w, h, format)
 }
 
-//Creates a new framebuffer and texture, with the texture attached to the frame buffer
+//Creates a new texture, with the texture attached to the provided frame buffer
 //
 func GenTextureOnFramebuffer(glctx gl.Context, f gl.Framebuffer, w, h int, format gl.Enum) gl.Texture {
 	glctx.BindFramebuffer(gl.FRAMEBUFFER, f)
 	checkGlError(glctx)
+	glctx.ActiveTexture(gl.TEXTURE0)
+	checkGlError(glctx)
+	t := GenTexture(glctx, w, h, format)
+
+	glctx.BindFramebuffer(gl.FRAMEBUFFER, gl.Framebuffer{0})
+	checkGlError(glctx)
+	return t
+}
+
+//Creates a new texture, with the texture attached to the current frame buffer
+//
+// Formats: GL_ALPHA, GL_RGB, GL_RGBA, GL_LUMINANCE, GL_LUMINANCE_ALPHA
+//
+func GenTexture(glctx gl.Context, w, h int, format gl.Enum) gl.Texture {
 	glctx.ActiveTexture(gl.TEXTURE0)
 	checkGlError(glctx)
 	t := glctx.CreateTexture()
@@ -432,22 +455,8 @@ func GenTextureOnFramebuffer(glctx gl.Context, f gl.Framebuffer, w, h int, forma
 	glctx.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, t, 0)
 	checkGlError(glctx)
 
-	/*
-	   depthbuffer := glctx.CreateRenderbuffer()
-	   glctx.BindRenderbuffer(gl.RENDERBUFFER, depthbuffer)
-	   glctx.RenderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, w, h)
-	   glctx.FramebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, depthbuffer)
-	*/
-
-	//status := glctx.CheckFramebufferStatus(gl.FRAMEBUFFER)
-	//if status != gl.FRAMEBUFFER_COMPLETE {
-	//log.Fatal(fmt.Sprintf("Gentexture failed: Framebuffer status: %v\n", status))
-	//}
-	glctx.BindFramebuffer(gl.FRAMEBUFFER, gl.Framebuffer{0})
-	checkGlError(glctx)
 	return t
 }
-
 
 //Creates a texture and draws a string to it
 //
