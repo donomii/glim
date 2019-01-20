@@ -3,40 +3,35 @@ package glim
 
 import "math"
 import (
-"regexp"
 	_ "image/jpeg"
 	_ "image/png"
+	"regexp"
 	"strings"
 	"unicode"
 	"unicode/utf8"
-//"fmt"
-
-	"image/color"
-	
+	//"fmt"
 )
-
-
 
 //Holds all the configuration details for drawing a string into a texture.  This structure gets written to during the draw
 type FormatParams struct {
-	Colour            *color.RGBA //Text colour
-	Line              int		  //The line number, i.e. the number of /n characters from the start
-	Cursor            int         //The cursor position, in characters from the start of the text
-	SelectStart       int         //Start of the selection box, counted from the start of document
-	SelectEnd         int         //End of the selection box, counted from the start of document
-	StartLinePos      int         //Updated during render, holds the closest start of line, including soft line breaks
-	FontSize          float64     //Fontsize, in points or something idfk
-	FirstDrawnCharPos int         //The first character to draw on the screen.  Anything before this is ignored
-	LastDrawnCharPos  int         //The last character that we were able to fit on the screen
-	TailBuffer        bool        //Nothing for now
-	Outline           bool        //Nothing for now
-	Vertical          bool        //Draw texture vertically for Chinese/Japanese rendering
-	SelectColour      *color.RGBA //Selection text colour
+	Colour            *RGBA   //Text colour
+	Line              int     //The line number, i.e. the number of /n characters from the start
+	Cursor            int     //The cursor position, in characters from the start of the text
+	SelectStart       int     //Start of the selection box, counted from the start of document
+	SelectEnd         int     //End of the selection box, counted from the start of document
+	StartLinePos      int     //Updated during render, holds the closest start of line, including soft line breaks
+	FontSize          float64 //Fontsize, in points or something idfk
+	FirstDrawnCharPos int     //The first character to draw on the screen.  Anything before this is ignored
+	LastDrawnCharPos  int     //The last character that we were able to fit on the screen
+	TailBuffer        bool    //Nothing for now
+	Outline           bool    //Nothing for now
+	Vertical          bool    //Draw texture vertically for Chinese/Japanese rendering
+	SelectColour      *RGBA   //Selection text colour
 }
 
 //Create a new text formatter, with useful default parameters
 func NewFormatter() *FormatParams {
-	return &FormatParams{&color.RGBA{5, 5, 5, 255}, 0, 0, 0, 0, 0, 22.0, 0, 0, false, true, false, &color.RGBA{255, 128, 128, 255}}
+	return &FormatParams{&RGBA{5, 5, 5, 255}, 0, 0, 0, 0, 0, 22.0, 0, 0, false, true, false, &RGBA{255, 128, 128, 255}}
 }
 
 //Draw a cursor shape
@@ -92,8 +87,10 @@ func InBounds(v, min, max Vec2) bool {
 
 //Move v to the closest point inside the box defined by min.max
 func MoveInBounds(v, min, max, charDim, charAdv, linAdv Vec2, attempts int) (newPos Vec2) {
-	attempts = attempts -1
-	if attempts < 0 { return v }
+	attempts = attempts - 1
+	if attempts < 0 {
+		return v
+	}
 	//fmt.Printf("pos: (%v), min: (%v), max: (%v), charDim: (%v)\n",v, min, max, charDim)
 	if v.X < min.X {
 		return MoveInBounds(Vec2{v.X + 1, v.Y}, min, max, charDim, charAdv, linAdv, attempts)
@@ -128,8 +125,8 @@ func RenderPara(f *FormatParams, xpos, ypos, minX, minY, maxX, maxY, clientWidth
 	vert := f.Vertical
 	orig_colour := f.Colour
 	foreGround := f.Colour
-	selectColour := color.RGBA{255, 1, 1, 255}
-	highlightColour := color.RGBA{1, 255, 1, 255}
+	selectColour := RGBA{255, 1, 1, 255}
+	highlightColour := RGBA{1, 255, 1, 255}
 	colSwitch := false
 	if f.TailBuffer {
 		//f.Cursor = len(text)
@@ -312,7 +309,7 @@ func RenderPara(f *FormatParams, xpos, ypos, minX, minY, maxX, maxY, clientWidth
 }
 
 func isNewLine(v string) bool {
-	return  (v == "\n") || (v == `\n`)
+	return (v == "\n") || (v == `\n`)
 }
 
 func RenderTokenPara(f *FormatParams, xpos, ypos, minX, minY, maxX, maxY, clientWidth, clientHeight, cursorX, cursorY int, u8Pix []uint8, tokens [][]string, transparent bool, doDraw bool, showCursor bool) (int, int, int) {
@@ -329,23 +326,23 @@ func RenderTokenPara(f *FormatParams, xpos, ypos, minX, minY, maxX, maxY, client
 		//scrollToCursor(f, text)  //Use pageup function, once it is fast enough
 	}
 	//log.Printf("Cursor: %v\n", f.Cursor)
-	
-	punctuationColour := color.RGBA{255, 1, 1, 255}
-	nameColour := color.RGBA{1, 255, 1, 255}
-	builtinColour := color.RGBA{1, 1, 255, 255}
-	var letters []string 
-	for _,v := range tokens {
+
+	punctuationColour := RGBA{255, 1, 1, 255}
+	nameColour := RGBA{1, 255, 1, 255}
+	builtinColour := RGBA{1, 1, 255, 255}
+	var letters []string
+	for _, v := range tokens {
 		re := regexp.MustCompile(`\\t`)
 		v := re.ReplaceAllLiteralString(v[1], "    ")
 		letters = append(letters, v)
 	}
-	var markup []string 
-	for _,v := range tokens {
+	var markup []string
+	for _, v := range tokens {
 		re := regexp.MustCompile(`\\t`)
 		v := re.ReplaceAllLiteralString(v[0], "    ")
-		 markup = append(markup, v)
+		markup = append(markup, v)
 	}
-	
+
 	letters = append(letters, " ")
 	orig_fontSize := f.FontSize
 	defer func() {
@@ -370,26 +367,29 @@ func RenderTokenPara(f *FormatParams, xpos, ypos, minX, minY, maxX, maxY, client
 	}
 	//sanityCheck(f,txt)
 	for i, v := range letters {
-	
+
 		styleName := markup[i]
-		
+
 		foreGround = orig_colour
 		if styleName == "Token.Name" {
 			foreGround = &nameColour
-		} 
-		
+		}
+
 		if styleName == "Token.Punctuation" {
 			foreGround = &punctuationColour
-		} 
-		
-		
+		}
+
 		if styleName == "Token.Name.Builtin" {
 			foreGround = &builtinColour
-		} 
-		
+		}
+
 		//fmt.Printf("%v: '%v'(%V)\n", i , v, v)
-		if isNewLine(v) { v = "\n" }
-		if v == `\t` { v = "    " }
+		if isNewLine(v) {
+			v = "\n"
+		}
+		if v == `\t` {
+			v = "    "
+		}
 		if i < f.FirstDrawnCharPos {
 			continue
 		}
@@ -416,8 +416,7 @@ func RenderTokenPara(f *FormatParams, xpos, ypos, minX, minY, maxX, maxY, client
 			//	foreGround = orig_colour
 			//}
 		}
-		
-		
+
 		if v == " " || isNewLine(v) {
 			f.FontSize = orig_fontSize
 			//log.Printf("Oversize end for %v at %v\n", v, i)
@@ -429,7 +428,7 @@ func RenderTokenPara(f *FormatParams, xpos, ypos, minX, minY, maxX, maxY, client
 			} else {
 				ypos = ypos + maxHeight
 				xpos = minX
-				if i > 0 && !isNewLine(letters[i-1]) { 
+				if i > 0 && !isNewLine(letters[i-1]) {
 					maxHeight = 12 //FIXME
 				}
 			}
@@ -457,7 +456,7 @@ func RenderTokenPara(f *FormatParams, xpos, ypos, minX, minY, maxX, maxY, client
 				//fuckedRect, _, _ := fa.GlyphBounds(glyph)
 				//letterHeight := fixed2int(fuckedRect.Max.Y)
 				letterHeight := Fixed2int(fa.Metrics().Height)
-				letterWidth := XmaX /2
+				letterWidth := XmaX / 2
 				//letterHeight = letterHeight
 
 				if vert && (xpos < 0) {
@@ -528,8 +527,6 @@ func RenderTokenPara(f *FormatParams, xpos, ypos, minX, minY, maxX, maxY, client
 	//SanityCheck(f, text)
 	return seekCursorPos, xpos, ypos
 }
-
-
 
 //Return the larger of two integers
 func MaxI(a, b int) int {
