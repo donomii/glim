@@ -3,13 +3,13 @@ package glim
 
 import "math"
 import (
+	//"fmt"
 	_ "image/jpeg"
 	_ "image/png"
 	"regexp"
 	"strings"
 	"unicode"
 	"unicode/utf8"
-	//"fmt"
 )
 
 //Holds all the configuration details for drawing a string into a texture.  This structure gets written to during the draw
@@ -119,7 +119,15 @@ func CopyFormatter(inF *FormatParams) *FormatParams {
 //This was a bad idea.  Instead of all the if statements, we should just assume everything is left-to-right, top-to-bottom, and then rotate the entire block afterwards (we will also have to rotate the characters around their own center)
 //
 //Return the cursor position (number of characters from start of text) that is closest to the mouse cursor (cursorX, cursorY)
+//
+// xpos, ypos - The starting draw position, global
+// minX, minY - The leftmost part of the draw subregion.  To fill the whole image, set to 0,0
+// maxX, maxY - The rightmost edge of draw subregion.  To fill the whole image, set to the image width
+// clentWidth, clienHeight - maxX-minX?
+// cursorX, cursorY - Mouse cursor coordinates, relative to whole image
 func RenderPara(f *FormatParams, xpos, ypos, minX, minY, maxX, maxY, clientWidth, clientHeight, cursorX, cursorY int, u8Pix []uint8, text string, transparent bool, doDraw bool, showCursor bool) (int, int, int) {
+	re := regexp.MustCompile(`\t`)
+	text = re.ReplaceAllLiteralString(text, "    ")
 	cursorDist := 9999999
 	seekCursorPos := 0
 	vert := f.Vertical
@@ -199,12 +207,13 @@ func RenderPara(f *FormatParams, xpos, ypos, minX, minY, maxX, maxY, clientWidth
 			//fmt.Printf("%v is between %v and %v\n", i , f.SelectStart, f.SelectEnd)
 			foreGround = nf.Colour
 		}
-		//fmt.Printf("%v: %V\n", i , f)
-		if (string(text[i]) == " ") || (string(text[i]) == "\n") {
+
+		if (string(text[i]) == " ") || (text[i] == byte(10)) {
 			f.FontSize = orig_fontSize
 			//log.Printf("Oversize end for %v at %v\n", v, i)
 		}
-		if string(text[i]) == "\n" {
+		if text[i] == byte(10) {
+			//fmt.Printf("%v, %v, %v: %+v\n", string(text[i]), text[i], i, f)
 			if vert {
 				xpos = xpos - maxHeight
 				ypos = minY

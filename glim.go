@@ -47,6 +47,10 @@ func ClearAllCaches() {
 	fontCache = map[string]*truetype.Font{}
 }
 
+func toChar(i int) rune {
+	return rune('A' - 1 + i)
+}
+
 //Load a image from disk, return a byte array, width, height
 func LoadImage(path string) ([]byte, int, int) {
 	infile, _ := os.Open(path)
@@ -234,6 +238,16 @@ func DumpBuff(buff []uint8, width, height uint) {
 	}
 }
 
+//Convert an array of uint8 to byte, because somehow golang manages to pack them differently in memeory
+func Uint8ToBytes(in []uint8) []byte {
+	out := make([]byte, len(in))
+	for i, v := range in {
+		out[i] = v
+	}
+	return out
+}
+
+//Convert to go's image library color
 func RGBAtoColor(in RGBA) color.RGBA {
 	out := color.RGBA{in[0], in[1], in[2], in[3]}
 	return out
