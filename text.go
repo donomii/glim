@@ -4,6 +4,7 @@ package glim
 import "math"
 import (
 	//"fmt"
+	"fmt"
 	_ "image/jpeg"
 	_ "image/png"
 	"regexp"
@@ -36,7 +37,7 @@ func NewFormatter() *FormatParams {
 
 //Draw a cursor shape
 func DrawCursor(xpos, ypos, height, clientWidth int, u8Pix []byte) {
-	colour := byte(0)
+	colour := byte(128)
 	for xx := int(0); xx < 3; xx++ {
 		for yy := int(0); yy < height; yy++ {
 			offset := (yy+ypos)*clientWidth*4 + (xx+xpos)*4
@@ -310,9 +311,11 @@ func RenderPara(f *FormatParams, xpos, ypos, minX, minY, maxX, maxY, clientWidth
 		if d < cursorDist {
 			cursorDist = d
 			seekCursorPos = i
+
 		}
 
 	}
+	fmt.Println("Cursor pos: ", f.Cursor)
 	SanityCheck(f, text)
 	return seekCursorPos, xpos, ypos
 }
