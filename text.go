@@ -4,7 +4,7 @@ package glim
 import "math"
 import (
 	//"fmt"
-	"fmt"
+	//"fmt"
 	_ "image/jpeg"
 	_ "image/png"
 	"regexp"
@@ -127,8 +127,8 @@ func CopyFormatter(inF *FormatParams) *FormatParams {
 // clentWidth, clienHeight - maxX-minX?
 // cursorX, cursorY - Mouse cursor coordinates, relative to whole image
 func RenderPara(f *FormatParams, xpos, ypos, minX, minY, maxX, maxY, clientWidth, clientHeight, cursorX, cursorY int, u8Pix []uint8, text string, transparent bool, doDraw bool, showCursor bool) (int, int, int) {
-	re := regexp.MustCompile(`\t`)
-	text = re.ReplaceAllLiteralString(text, "    ")
+	//re := regexp.MustCompile(`\t`)
+	//text = re.ReplaceAllLiteralString(text, "    ")
 	cursorDist := 9999999
 	seekCursorPos := 0
 	vert := f.Vertical
@@ -192,6 +192,9 @@ func RenderPara(f *FormatParams, xpos, ypos, minX, minY, maxX, maxY, clientWidth
 			} else {
 				foreGround = orig_colour
 			}
+		}
+		if v == "\t" {
+			v = "    "
 		}
 		if (i >= f.SelectStart) && (i <= f.SelectEnd) && (f.SelectStart != f.SelectEnd) {
 			nf := CopyFormatter(f)
@@ -315,7 +318,7 @@ func RenderPara(f *FormatParams, xpos, ypos, minX, minY, maxX, maxY, clientWidth
 		}
 
 	}
-	fmt.Println("Cursor pos: ", f.Cursor)
+	//fmt.Println("Cursor pos: ", f.Cursor)
 	SanityCheck(f, text)
 	return seekCursorPos, xpos, ypos
 }
