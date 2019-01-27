@@ -47,8 +47,8 @@ func ClearAllCaches() {
 	fontCache = map[string]*truetype.Font{}
 }
 
-func toChar(i int) rune {
-	return rune('A' - 1 + i)
+func ToChar(i int) rune {
+	return rune(i)
 }
 
 //Load a image from disk, return a byte array, width, height
