@@ -3,7 +3,7 @@ package glim
 
 import (
 	"golang.org/x/image/font/gofont/gomono"
-	_ "golang.org/x/image/font/gofont/goregular"
+	//_ "golang.org/x/image/font/gofont/goregular"
 
 	"github.com/golang/freetype/truetype"
 )
