@@ -63,6 +63,35 @@ func LoadImage(path string) ([]byte, int, int) {
 	return rgba.Pix, rect.Max.X, rect.Max.Y
 }
 
+// Abs64 returns the absolute value of x.
+func Abs64(x int64) int64 {
+	if x < 0 {
+		return -x
+	}
+	return x
+}
+
+// Calculate the pixel difference between two images.
+//
+// This does a simple pixel compare, by sutracting the RGB pixel values.  Itdoes not take into account perceptual differences or gamma or anything clever like that
+//
+// The higher the returned number, the more different the pictures are
+func CalcDiff(renderPix, refImage []byte, width, height int) (int64, []byte) {
+	diffbuff := make([]byte, len(refImage))
+	diff := int64(0)
+	for y := 0; y < height; y++ {
+		for x := 0; x < width; x++ {
+			for z := 0; z < 3; z++ {
+				i := (x+y*width)*4 + z
+				d := Abs64(int64(renderPix[i]) - int64(refImage[i]))
+				diff = diff + d
+				diffbuff[i] = byte(d)
+			}
+		}
+	}
+	return diff, diffbuff
+}
+
 //Copies an image to a correctly-packed texture data array, where "correctly packed" means a byte array suitable for loading into OpenGL as a 32-bit RGBA byte blob
 //
 //Other formats are not currently supported, patches welcome, etc
