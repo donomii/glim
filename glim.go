@@ -329,7 +329,7 @@ func DrawStringRGBA(txtSize float64, fontColor RGBA, txt, fontfile string) (*ima
 
 	d.Dot = fixed.Point26_6{
 		X: fixed.I(Xadj),
-		Y: fixed.I(targetHeight * 1 / 2.5), //fixed.I(rect.Max.Y/3), //rect.Max.Y*2/3), //FIXME
+		Y: fixed.I(int(float32(targetHeight) * float32(1) / float32(2.5))), //fixed.I(rect.Max.Y/3), //rect.Max.Y*2/3), //FIXME
 	}
 	d.DrawString(txt)
 	renderCache[cacheKey] = rgba
