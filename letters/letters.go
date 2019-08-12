@@ -24,19 +24,28 @@ func DumpBuff(buff []uint8, width, height uint) string {
 			}
 
 		}
-		out = out + "\n"
+		//out = out + "\n"
 	}
 	return out
 }
 
 func main() {
+    size := float64(10)
+
+	img, _ := glim.DrawStringRGBA(size, glim.RGBA{255, 255, 255, 255}, string(64), "f1.ttf")
+	XmaX, YmaX := img.Bounds().Max.X, img.Bounds().Max.Y
+
+	fmt.Printf("#define LETTER_WIDTH %v\n", XmaX/2)
+	fmt.Printf("#define LETTER_HEIGHT %v\n\n\n", YmaX/2)
+
 	for i := 0; i < 256; i++ {
-		img, _ := glim.DrawStringRGBA(15, glim.RGBA{255, 255, 255, 255}, string(i), "f1.ttf")
+		img, _ := glim.DrawStringRGBA(size, glim.RGBA{255, 255, 255, 255}, string(i), "f1.ttf")
 		XmaX, YmaX := img.Bounds().Max.X, img.Bounds().Max.Y
 		bts, X, Y := glim.GFormatToImage(img, nil, XmaX, YmaX)
 		//log.Println(bts)
 		letter := DumpBuff(bts, uint(X)/2, uint(Y))
 
+        fmt.Printf("//Width:%v height:%v\n", X, Y)
 		fmt.Println(output_c(i, letter))
 
 	}
@@ -53,7 +62,7 @@ func output_c(index int, letter string) string {
 func letterlookup_c() string {
 	out := "char * letterlookup(int letter) {\n"
 	for i := 0; i < 256; i++ {
-		out = out + fmt.Sprintf("	if(letter==%v) { return(letter_%v();}\n", i, i)
+		out = out + fmt.Sprintf("	if(letter==%v) { return(letter_%v());}\n", i, i)
 	}
 	out = out + "	return(\"whoops\");\n}"
 	return out

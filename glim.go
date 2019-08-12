@@ -92,6 +92,29 @@ func CalcDiff(renderPix, refImage []byte, width, height int) (int64, []byte) {
 	return diff, diffbuff
 }
 
+// Calculate the pixel difference between two images.
+//
+// This does a simple pixel compare, by sutracting the RGB pixel values, then squaring the difference.  It does not take into account perceptual differences or gamma or anything clever like that
+//
+// The higher the returned number, the more different the pictures are
+func CalcDiffSq(renderPix, refImage []byte, width, height int) (int64, []byte) {
+	diffbuff := make([]byte, len(refImage))
+	diff := int64(0)
+	for y := 0; y < height; y++ {
+		for x := 0; x < width; x++ {
+			for z := 0; z < 3; z++ {
+				i := (x+y*width)*4 + z
+				d := int64(renderPix[i]) - int64(refImage[i])
+                dd :=  d*d
+				diff = diff + dd
+				diffbuff[i] = byte(dd)
+			}
+		}
+	}
+	return diff, diffbuff
+}
+
+
 //Copies an image to a correctly-packed texture data array, where "correctly packed" means a byte array suitable for loading into OpenGL as a 32-bit RGBA byte blob
 //
 //Other formats are not currently supported, patches welcome, etc
