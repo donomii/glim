@@ -98,6 +98,13 @@ func CalcDiff(renderPix, refImage []byte, width, height int) (int64, []byte) {
 //
 // The higher the returned number, the more different the pictures are
 func CalcDiffSq(renderPix, refImage []byte, width, height int) (int64, []byte) {
+	if len(refImage) != width*height*4 {
+		panic(fmt.Sprintf("Reference image does not match size provided.  Expected %v but got %v", width*height*4, len(refImage)))
+	}
+	if len(renderPix) != width*height*4 {
+		panic(fmt.Sprintf("Rendered image does not match size provided.  Expected %v but got %v", width*height*4, len(renderPix)))
+	}
+
 	diffbuff := make([]byte, len(refImage))
 	diff := int64(0)
 	for y := 0; y < height; y++ {
@@ -105,15 +112,14 @@ func CalcDiffSq(renderPix, refImage []byte, width, height int) (int64, []byte) {
 			for z := 0; z < 3; z++ {
 				i := (x+y*width)*4 + z
 				d := int64(renderPix[i]) - int64(refImage[i])
-                dd :=  d*d
+				dd := d * d
 				diff = diff + dd
-				diffbuff[i] = byte(dd)
+				diffbuff[i] = byte(Abs64(d))
 			}
 		}
 	}
 	return diff, diffbuff
 }
-
 
 //Copies an image to a correctly-packed texture data array, where "correctly packed" means a byte array suitable for loading into OpenGL as a 32-bit RGBA byte blob
 //
@@ -124,6 +130,8 @@ func PaintTexture(img image.Image, u8Pix []uint8, clientWidth int) []uint8 {
 	out, _, _ := GFormatToImage(img, u8Pix, 0, 0)
 	return out
 }
+
+//Use width and height of 0 to use the image size
 func GFormatToImage(img image.Image, u8Pix []uint8, clientWidth, clientHeight int) ([]uint8, int, int) {
 	bounds := img.Bounds()
 	newW := bounds.Max.X
