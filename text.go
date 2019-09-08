@@ -186,7 +186,8 @@ func RenderPara(f *FormatParams, xpos, ypos, minX, minY, maxX, maxY, clientWidth
 			//} else {
 			//f.Colour = &color.RGBA{1,1,1,255}
 			//}
-			colSwitch = !colSwitch
+			//Alternate colours on words
+			//colSwitch = !colSwitch
 			if colSwitch {
 				foreGround = &highlightColour
 			} else {
