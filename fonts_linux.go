@@ -2,7 +2,6 @@
 package glim
 
 import (
-
 	"bytes"
 	"fmt"
 	"io"
@@ -11,7 +10,6 @@ import (
 	"os"
 
 	"github.com/kardianos/osext"
-	sysFont "golang.org/x/mobile/exp/font"
 
 	"github.com/golang/freetype/truetype"
 )
