@@ -300,14 +300,14 @@ func DumpBuff(buff []uint8, width, height uint) {
 
 //Convert an array of uint8 to byte, because somehow golang manages to pack them differently in memeory
 func Uint8ToBytes(in []uint8, out []byte) []byte {
-	log.Println("Uint8ToBytes")
+	//log.Println("Uint8ToBytes")
 	if out == nil {
 		out = make([]byte, len(in))
 	}
 	for i, v := range in {
 		out[i] = v
 	}
-	log.Println("Finished Uint8ToBytes")
+	//log.Println("Finished Uint8ToBytes")
 	return out
 }
 
