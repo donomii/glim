@@ -2,19 +2,13 @@
 package glim
 
 import (
-	"bytes"
-	"fmt"
-	"io"
-	"io/ioutil"
-	"log"
-	"os"
-
-	"github.com/kardianos/osext"
+	"golang.org/x/image/font/gofont/gomono"
+	//_ "golang.org/x/image/font/gofont/goregular"
 
 	"github.com/golang/freetype/truetype"
 )
 
-//Attempts to load a font using golang&s built in truetype font library
+//Attempts to load a font using golang's built in truetype font library
 func LoadFont(fileName string) *truetype.Font {
 
 	if fontCache == nil {
