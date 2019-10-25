@@ -7,7 +7,7 @@ import (
 	"github.com/golang/freetype/truetype"
 )
 
-//Attempts to load a font using goMobile's truetype font library
+//Attempts to load a font using golang's built in truetype font library
 func LoadFont(fileName string) *truetype.Font {
 
 	if fontCache == nil {
