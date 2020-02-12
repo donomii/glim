@@ -2,14 +2,17 @@
 package glim
 
 import "math"
+import _ "net/http/pprof"
 import (
 	//"fmt"
 	//"fmt"
 	_ "image/jpeg"
 	_ "image/png"
+	"log"
 	"regexp"
 	"strings"
 	"unicode"
+
 	"unicode/utf8"
 )
 
@@ -54,6 +57,7 @@ func DrawCursor(xpos, ypos, height, clientWidth int, u8Pix []byte) {
 
 //Check and correct formatparams to make sure e.g. cursor is always on the screen
 func SanityCheck(f *FormatParams, txt string) {
+	log.Println("Sanity check")
 	if f.Cursor < 0 {
 		f.Cursor = 0
 	}
@@ -141,7 +145,7 @@ func RenderPara(f *FormatParams, xpos, ypos, minX, minY, maxX, maxY, clientWidth
 		//f.Cursor = len(text)
 		//scrollToCursor(f, text)  //Use pageup function, once it is fast enough
 	}
-	//log.Printf("Cursor: %v\n", f.Cursor)
+	log.Printf("Cursor: %v\n", f.Cursor)
 	letters := strings.Split(text, "")
 	letters = append(letters, " ")
 	orig_fontSize := f.FontSize
@@ -155,7 +159,7 @@ func RenderPara(f *FormatParams, xpos, ypos, minX, minY, maxX, maxY, clientWidth
 		xpos = maxX
 	}
 	gx, gy := GetGlyphSize(f.FontSize, text)
-	//fmt.Printf("Chose position %v, maxX: %v\n", pos, maxX)
+	//log.Printf("Chose position %v, maxX: %v\n", pos, maxX)
 	pos := MoveInBounds(Vec2{xpos, ypos}, Vec2{minX, minY}, Vec2{maxX, maxY}, Vec2{gx, gy}, Vec2{0, 1}, Vec2{-1, 0}, 10)
 	xpos = pos.X
 	ypos = pos.Y
@@ -167,6 +171,7 @@ func RenderPara(f *FormatParams, xpos, ypos, minX, minY, maxX, maxY, clientWidth
 	}
 	//sanityCheck(f,txt)
 	for i, v := range letters {
+		log.Printf("Loop for letter %v of %v %v", i, len(letters), v)
 		if i < f.FirstDrawnCharPos {
 			continue
 		}
@@ -215,10 +220,10 @@ func RenderPara(f *FormatParams, xpos, ypos, minX, minY, maxX, maxY, clientWidth
 
 		if (string(text[i]) == " ") || (text[i] == byte(10)) {
 			f.FontSize = orig_fontSize
-			//log.Printf("Oversize end for %v at %v\n", v, i)
+			log.Printf("Oversize end for %v at %v\n", v, i)
 		}
 		if text[i] == byte(10) {
-			//fmt.Printf("%v, %v, %v: %+v\n", string(text[i]), text[i], i, f)
+			log.Printf("Newline: %v, %v, %v: %+v\n", string(text[i]), text[i], i, f)
 			if vert {
 				xpos = xpos - maxHeight
 				ypos = minY
@@ -321,6 +326,7 @@ func RenderPara(f *FormatParams, xpos, ypos, minX, minY, maxX, maxY, clientWidth
 	}
 	//fmt.Println("Cursor pos: ", f.Cursor)
 	SanityCheck(f, text)
+	log.Println("Render paragraph complete")
 	return seekCursorPos, xpos, ypos
 }
 
