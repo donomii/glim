@@ -591,3 +591,18 @@ func MakeTransparent(m []byte, col color.RGBA) []byte {
 	}
 	return m
 }
+
+//Invert the colour of all pixels
+//
+//i.e. set each RGB channel to 255-n
+//
+//The alpha value is ignored
+func Invert(m []byte) []byte {
+	for i := 0; i < len(m); i = i + 4 {
+		m[i] = 255 - m[i]
+		m[i+1] = 255 - m[i+1]
+		m[i+2] = 255 - m[i+2]
+		m[i+3] = m[i+3]
+	}
+	return m
+}
