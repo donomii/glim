@@ -554,7 +554,7 @@ func Rotate270(srcW, srcH int, src []byte) []byte {
 }
 
 //Flips a 32bit byte array picture upside down.  Creates a target array with with the correct dimensions and returns it
-func FlipUp(srcW, srcH int, src []uint8) []byte {
+func FlipUp(srcW, srcH int, src []byte) []byte {
 	//log.Printf("Rotating image (%v,%v)\n",srcW, srcH)
 	dstW := srcW
 	dstH := srcH
@@ -597,7 +597,7 @@ func MakeTransparent(m []byte, col color.RGBA) []byte {
 //i.e. set each RGB channel to 255-n
 //
 //The alpha value is ignored
-func Invert(m []uint8) []byte {
+func Invert(m []byte) []byte {
 	for i := 0; i < len(m); i = i + 4 {
 		m[i] = 255 - m[i]
 		m[i+1] = 255 - m[i+1]
