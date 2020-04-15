@@ -602,7 +602,6 @@ func Invert(m []byte) []byte {
 		m[i] = 255 - m[i]
 		m[i+1] = 255 - m[i+1]
 		m[i+2] = 255 - m[i+2]
-		m[i+3] = m[i+3]
 	}
 	return m
 }
