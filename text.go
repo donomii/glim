@@ -1,18 +1,19 @@
 // Text editor library.  Routines to support a text editor
 package glim
 
-import "math"
-import _ "net/http/pprof"
 import (
+	"math"
+	_ "net/http/pprof"
+
 	//"fmt"
 	//"fmt"
 	_ "image/jpeg"
+
 	_ "image/png"
 	"log"
 	"regexp"
 	"strings"
 	"unicode"
-
 	"unicode/utf8"
 )
 
@@ -39,11 +40,11 @@ func NewFormatter() *FormatParams {
 }
 
 //Draw a cursor shape
-func DrawCursor(xpos, ypos, height, clientWidth int, u8Pix []byte) {
+func DrawCursor(xpos, ypos, height, pixWidth int, u8Pix []byte) {
 	colour := byte(128)
 	for xx := int(0); xx < 3; xx++ {
 		for yy := int(0); yy < height; yy++ {
-			offset := (yy+ypos)*clientWidth*4 + (xx+xpos)*4
+			offset := (yy+ypos)*pixWidth*4 + (xx+xpos)*4
 			//log.Printf("Drawpos: %v", offset)
 			if offset >= 0 && offset < (len(u8Pix)) {
 				u8Pix[offset] = colour
@@ -125,12 +126,12 @@ func CopyFormatter(inF *FormatParams) *FormatParams {
 //
 //Return the cursor position (number of characters from start of text) that is closest to the mouse cursor (cursorX, cursorY)
 //
-// xpos, ypos - The starting draw position, global
-// minX, minY - The leftmost part of the draw subregion.  To fill the whole image, set to 0,0
-// maxX, maxY - The rightmost edge of draw subregion.  To fill the whole image, set to the image width
-// clentWidth, clienHeight - maxX-minX?
+// xpos, ypos - The starting draw position, in 0<=xpos<=pixWidth, 0<=y<=pixHeight
+// minX, minY - The leftmost part of the draw subregion.  To fill the whole pix, set to 0,0
+// maxX, maxY - The rightmost edge of draw subregion.  To fill the whole pix, set to pixWidth, pixHeight
+// pixWidth, pixHeight - the size of the bitmap (e.g. in screen coordinates)
 // cursorX, cursorY - Mouse cursor coordinates, relative to whole image
-func RenderPara(f *FormatParams, xpos, ypos, minX, minY, maxX, maxY, clientWidth, clientHeight, cursorX, cursorY int, u8Pix []uint8, text string, transparent bool, doDraw bool, showCursor bool) (int, int, int) {
+func RenderPara(f *FormatParams, xpos, ypos, minX, minY, maxX, maxY, pixWidth, pixHeight, cursorX, cursorY int, u8Pix []uint8, text string, transparent bool, doDraw bool, showCursor bool) (int, int, int) {
 	//re := regexp.MustCompile(`\t`)
 	//text = re.ReplaceAllLiteralString(text, "    ")
 	cursorDist := 9999999
@@ -141,10 +142,7 @@ func RenderPara(f *FormatParams, xpos, ypos, minX, minY, maxX, maxY, clientWidth
 	selectColour := RGBA{255, 1, 1, 255}
 	highlightColour := RGBA{1, 255, 1, 255}
 	colSwitch := false
-	if f.TailBuffer {
-		//f.Cursor = len(text)
-		//scrollToCursor(f, text)  //Use pageup function, once it is fast enough
-	}
+
 	log.Printf("Cursor: %v\n", f.Cursor)
 	letters := strings.Split(text, "")
 	letters = append(letters, " ")
@@ -153,8 +151,7 @@ func RenderPara(f *FormatParams, xpos, ypos, minX, minY, maxX, maxY, clientWidth
 		f.FontSize = orig_fontSize
 		SanityCheck(f, text)
 	}()
-	//xpos := minX
-	//ypos := minY
+
 	if vert {
 		xpos = maxX
 	}
@@ -163,7 +160,7 @@ func RenderPara(f *FormatParams, xpos, ypos, minX, minY, maxX, maxY, clientWidth
 	pos := MoveInBounds(Vec2{xpos, ypos}, Vec2{minX, minY}, Vec2{maxX, maxY}, Vec2{gx, gy}, Vec2{0, 1}, Vec2{-1, 0}, 10)
 	xpos = pos.X
 	ypos = pos.Y
-	maxHeight := 0
+	maxHeight := int(orig_fontSize)
 	letterWidth := 100
 	wobblyMode := false
 	if f.Cursor > len(letters) {
@@ -175,8 +172,8 @@ func RenderPara(f *FormatParams, xpos, ypos, minX, minY, maxX, maxY, clientWidth
 		if i < f.FirstDrawnCharPos {
 			continue
 		}
-		if (f.Cursor == i) && doDraw {
-			DrawCursor(xpos, ypos, maxHeight, clientWidth, u8Pix)
+		if (showCursor && f.Cursor == i) && doDraw {
+			DrawCursor(xpos, ypos, maxHeight, pixWidth, u8Pix)
 		}
 		if i >= len(letters)-1 {
 			continue
@@ -208,10 +205,10 @@ func RenderPara(f *FormatParams, xpos, ypos, minX, minY, maxX, maxY, clientWidth
 			nf.SelectEnd = -1
 			nf.Colour = &selectColour
 			/*if i-1<f.SelectStart {
-			      _, xpos, ypos = RenderPara(nf, xpos, ypos, 0, 0, maxX, maxY, clientWidth, clientHeight, cursorX, cursorY, u8Pix, "{", transparent, doDraw, showCursor)
+			      _, xpos, ypos = RenderPara(nf, xpos, ypos, 0, 0, maxX, maxY, pixWidth, pixHeight, cursorX, cursorY, u8Pix, "{", transparent, doDraw, showCursor)
 			  }
 			  if i+1>f.SelectEnd {
-			      _, xpos, ypos = RenderPara(nf, xpos, ypos, 0, 0, maxX, maxY, clientWidth, clientHeight, cursorX, cursorY, u8Pix, "}", transparent, doDraw, showCursor)
+			      _, xpos, ypos = RenderPara(nf, xpos, ypos, 0, 0, maxX, maxY, pixWidth, pixHeight, cursorX, cursorY, u8Pix, "}", transparent, doDraw, showCursor)
 			  }*/
 
 			//fmt.Printf("%v is between %v and %v\n", i , f.SelectStart, f.SelectEnd)
@@ -237,7 +234,7 @@ func RenderPara(f *FormatParams, xpos, ypos, minX, minY, maxX, maxY, clientWidth
 			f.Line++
 			f.StartLinePos = i
 			if f.Cursor == i && showCursor {
-				DrawCursor(xpos, ypos, maxHeight, clientWidth, u8Pix)
+				DrawCursor(xpos, ypos, maxHeight, pixWidth, u8Pix)
 			}
 		} else {
 			if i >= f.FirstDrawnCharPos {
@@ -298,12 +295,12 @@ func RenderPara(f *FormatParams, xpos, ypos, minX, minY, maxX, maxY, clientWidth
 
 				if doDraw {
 					//PasteImg(img, xpos, ypos + ytweak, u8Pix, transparent)
-					//PasteBytes(XmaX, YmaX, imgBytes, xpos, ypos+ytweak, int(clientWidth), int(clientHeight), u8Pix, transparent)
-					PasteBytes(XmaX, YmaX, imgBytes, xpos, ypos+ytweak, int(clientWidth), int(clientHeight), u8Pix, true, false, true)
+					//PasteBytes(XmaX, YmaX, imgBytes, xpos, ypos+ytweak, int(pixWidth), int(pixHeight), u8Pix, transparent)
+					PasteBytes(XmaX, YmaX, imgBytes, xpos, ypos+ytweak, int(pixWidth), int(pixHeight), u8Pix, true, false, true)
 				}
 
 				if f.Cursor == i && showCursor {
-					DrawCursor(xpos, ypos, maxHeight, clientWidth, u8Pix)
+					DrawCursor(xpos, ypos, maxHeight, pixWidth, u8Pix)
 				}
 
 				f.LastDrawnCharPos = i
@@ -334,7 +331,7 @@ func isNewLine(v string) bool {
 	return (v == "\n") || (v == `\n`)
 }
 
-func RenderTokenPara(f *FormatParams, xpos, ypos, minX, minY, maxX, maxY, clientWidth, clientHeight, cursorX, cursorY int, u8Pix []uint8, tokens [][]string, transparent bool, doDraw bool, showCursor bool) (int, int, int) {
+func RenderTokenPara(f *FormatParams, xpos, ypos, minX, minY, maxX, maxY, pixWidth, pixHeight, cursorX, cursorY int, u8Pix []uint8, tokens [][]string, transparent bool, doDraw bool, showCursor bool) (int, int, int) {
 	cursorDist := 9999999
 	seekCursorPos := 0
 	vert := f.Vertical
@@ -415,8 +412,8 @@ func RenderTokenPara(f *FormatParams, xpos, ypos, minX, minY, maxX, maxY, client
 		if i < f.FirstDrawnCharPos {
 			continue
 		}
-		if (f.Cursor == i) && doDraw {
-			DrawCursor(xpos, ypos, maxHeight, clientWidth, u8Pix)
+		if (showCursor && f.Cursor == i) && doDraw {
+			DrawCursor(xpos, ypos, maxHeight, pixWidth, u8Pix)
 		}
 		if i >= len(letters)-1 {
 			continue
@@ -458,7 +455,7 @@ func RenderTokenPara(f *FormatParams, xpos, ypos, minX, minY, maxX, maxY, client
 			f.Line = f.Line + 1
 			f.StartLinePos = i
 			if f.Cursor == i && showCursor {
-				DrawCursor(xpos, ypos, maxHeight, clientWidth, u8Pix)
+				DrawCursor(xpos, ypos, maxHeight, pixWidth, u8Pix)
 			}
 		} else {
 			if i >= f.FirstDrawnCharPos {
@@ -521,12 +518,12 @@ func RenderTokenPara(f *FormatParams, xpos, ypos, minX, minY, maxX, maxY, client
 
 				if doDraw {
 					//PasteImg(img, xpos, ypos + ytweak, u8Pix, transparent)
-					//PasteBytes(XmaX, YmaX, imgBytes, xpos, ypos+ytweak, int(clientWidth), int(clientHeight), u8Pix, transparent)
-					PasteBytes(XmaX, YmaX, imgBytes, xpos, ypos+ytweak, int(clientWidth), int(clientHeight), u8Pix, true, false, true)
+					//PasteBytes(XmaX, YmaX, imgBytes, xpos, ypos+ytweak, int(pixWidth), int(pixHeight), u8Pix, transparent)
+					PasteBytes(XmaX, YmaX, imgBytes, xpos, ypos+ytweak, int(pixWidth), int(pixHeight), u8Pix, true, false, true)
 				}
 
 				if f.Cursor == i && showCursor {
-					DrawCursor(xpos, ypos, maxHeight, clientWidth, u8Pix)
+					DrawCursor(xpos, ypos, maxHeight, pixWidth, u8Pix)
 				}
 
 				f.LastDrawnCharPos = i
