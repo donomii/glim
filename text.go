@@ -300,7 +300,7 @@ func RenderPara(f *FormatParams, xpos, ypos, minX, minY, maxX, maxY, pixWidth, p
 				if doDraw {
 					//PasteImg(img, xpos, ypos + ytweak, u8Pix, transparent)
 					//PasteBytes(XmaX, YmaX, imgBytes, xpos, ypos+ytweak, int(pixWidth), int(pixHeight), u8Pix, transparent)
-					PasteBytes(XmaX, YmaX, imgBytes, xpos, ypos+ytweak, int(pixWidth), int(pixHeight), u8Pix, true, false, true)
+					PasteBytes(XmaX, YmaX, imgBytes, xpos, ypos+ytweak, int(pixWidth), int(pixHeight), u8Pix, true, false, false)
 				}
 
 				if f.Cursor == i && showCursor {
@@ -524,7 +524,7 @@ func RenderTokenPara(f *FormatParams, xpos, ypos, minX, minY, maxX, maxY, pixWid
 				if doDraw {
 					//PasteImg(img, xpos, ypos + ytweak, u8Pix, transparent)
 					//PasteBytes(XmaX, YmaX, imgBytes, xpos, ypos+ytweak, int(pixWidth), int(pixHeight), u8Pix, transparent)
-					PasteBytes(XmaX, YmaX, imgBytes, xpos, ypos+ytweak, int(pixWidth), int(pixHeight), u8Pix, true, false, true)
+					PasteBytes(XmaX, YmaX, imgBytes, xpos, ypos+ytweak, int(pixWidth), int(pixHeight), u8Pix, true, false, false)
 				}
 
 				if f.Cursor == i && showCursor {

@@ -334,6 +334,7 @@ func DrawStringRGBA(txtSize float64, fontColor RGBA, txt, fontfile string) (*ima
 	if ok && ok1 {
 		return im, face
 	}
+
 	txtFont := LoadFont(fontfile)
 	d := &font.Drawer{
 		Src: image.NewUniform(RGBAtoColor(fontColor)), // 字体颜色
@@ -414,21 +415,22 @@ func PasteBytes(srcWidth, srcHeight int, srcBytes []byte, xpos, ypos, dstWidth, 
 				g := srcBytes[srcOff+1]
 				b := srcBytes[srcOff+2]
 
-				dstR := u8Pix[srcOff+0]
-				dstG := u8Pix[srcOff+1]
-				dstB := u8Pix[srcOff+2]
+				dstR := u8Pix[dstOff+0]
+				dstG := u8Pix[dstOff+1]
+				dstB := u8Pix[dstOff+2]
 
 				srcA := float64(srcBytes[srcOff+3]) / 255.0
-				dstA := 0.0 //float64(u8Pix[dstOff+3])/255.0
+				dstA := float64(u8Pix[dstOff+3])/255.0
 
 				outA := srcA + dstA*(1-srcA)
+				nDstA := dstA*(1-srcA)
 
 				outR := byte(0)
 				outG := byte(0)
 				outB := byte(0)
-				outR = byte((float64(r)*srcA + float64(dstR)*dstA*(1-srcA)) / outA)
-				outG = byte((float64(g)*srcA + float64(dstG)*dstA*(1-srcA)) / outA)
-				outB = byte((float64(b)*srcA + float64(dstB)*dstA*(1-srcA)) / outA)
+				outR = byte((float64(r)*srcA + float64(dstR)*nDstA) )
+				outG = byte((float64(g)*srcA + float64(dstG)*nDstA) )
+				outB = byte((float64(b)*srcA + float64(dstB)*nDstA) )
 				//if srcBytes[i*srcWidth*4+j*4] > u8Pix[(ypos+i)*dstWidth*bpp+xpos*bpp+j*bpp] {
 				////log2Buff(fmt.Sprintf("Source: (%v,%v), destination: (%v,%v)\n", j,i,xpos+j, ypos+i))
 				//copy(u8Pix[dstOff:dstOff+4], srcBytes[srcOff:srcOff+4])
@@ -436,12 +438,12 @@ func PasteBytes(srcWidth, srcHeight int, srcBytes []byte, xpos, ypos, dstWidth, 
 				u8Pix[dstOff+0] = outR
 				u8Pix[dstOff+1] = outG
 				u8Pix[dstOff+2] = outB
+				u8Pix[dstOff+3] = byte(outA*255)
 				if copyAlpha { //Needed because the default alpha is 0, which causes multiple pastes to fully overwrite the previous pastes
 					if srcBytes[srcOff+3] > u8Pix[dstOff+3] {
 						u8Pix[dstOff+3] = srcBytes[srcOff+3]
 					}
 				}
-				//copy(u8Pix[dstOff:dstOff+4], srcBytes[srcOff:srcOff+4])
 				if showBorder {
 					if i == 0 || j == 0 || i == srcHeight-1 || j == srcWidth-1 {
 						u8Pix[dstOff+0] = 255
