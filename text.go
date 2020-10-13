@@ -32,24 +32,25 @@ type FormatParams struct {
 	Outline           bool    //Nothing for now
 	Vertical          bool    //Draw texture vertically for Chinese/Japanese rendering
 	SelectColour      *RGBA   //Selection text colour
+	CursorColour      *RGBA
 }
 
 //Create a new text formatter, with useful default parameters
 func NewFormatter() *FormatParams {
-	return &FormatParams{&RGBA{5, 5, 5, 255}, 0, 0, 0, 0, 0, 22.0, 0, 0, false, true, false, &RGBA{255, 128, 128, 255}}
+	return &FormatParams{&RGBA{5, 5, 5, 255}, 0, 0, 0, 0, 0, 22.0, 0, 0, false, true, false, &RGBA{255, 128, 128, 255}, &RGBA{255, 0, 0, 255}}
 }
 
 //Draw a cursor shape
-func DrawCursor(xpos, ypos, height, pixWidth int, u8Pix []byte) {
-	colour := byte(128)
-	for xx := int(0); xx < 3; xx++ {
+func DrawCursor(xpos, ypos, height, pixWidth int, u8Pix []byte, cursorColour *RGBA) {
+	colour := *cursorColour
+	for xx := int(0); xx < 6; xx++ {
 		for yy := int(0); yy < height; yy++ {
 			offset := (yy+ypos)*pixWidth*4 + (xx+xpos)*4
 			//log.Printf("Drawpos: %v", offset)
 			if offset >= 0 && offset < (len(u8Pix)) {
-				u8Pix[offset] = colour
-				u8Pix[offset+1] = colour
-				u8Pix[offset+2] = colour
+				u8Pix[offset] = colour[0]
+				u8Pix[offset+1] = colour[1]
+				u8Pix[offset+2] = colour[2]
 				u8Pix[offset+3] = 255
 			}
 		}
@@ -62,14 +63,17 @@ func SanityCheck(f *FormatParams, txt string) {
 	if f.Cursor < 0 {
 		f.Cursor = 0
 	}
-	if f.Cursor >= len(txt)-1 {
-		f.Cursor = len(txt) - 1
+	if f.Cursor > len(txt) {
+		f.Cursor = len(txt)
 	}
 	if f.FirstDrawnCharPos < 0 {
 		f.FirstDrawnCharPos = 0
 	}
 	if f.FirstDrawnCharPos >= len(txt)-1 {
 		f.FirstDrawnCharPos = len(txt) - 1
+	}
+	if f.Cursor < 0 {
+		f.Cursor = 0
 	}
 
 }
@@ -173,7 +177,7 @@ func RenderPara(f *FormatParams, xpos, ypos, minX, minY, maxX, maxY, pixWidth, p
 			continue
 		}
 		if (showCursor && f.Cursor == i) && doDraw {
-			DrawCursor(xpos, ypos, maxHeight, pixWidth, u8Pix)
+			DrawCursor(xpos, ypos, maxHeight, pixWidth, u8Pix, f.CursorColour)
 		}
 		if i >= len(letters)-1 {
 			continue
@@ -234,7 +238,7 @@ func RenderPara(f *FormatParams, xpos, ypos, minX, minY, maxX, maxY, pixWidth, p
 			f.Line++
 			f.StartLinePos = i
 			if f.Cursor == i && showCursor {
-				DrawCursor(xpos, ypos, maxHeight, pixWidth, u8Pix)
+				DrawCursor(xpos, ypos, maxHeight, pixWidth, u8Pix, f.CursorColour)
 			}
 		} else {
 			if i >= f.FirstDrawnCharPos {
@@ -300,7 +304,7 @@ func RenderPara(f *FormatParams, xpos, ypos, minX, minY, maxX, maxY, pixWidth, p
 				}
 
 				if f.Cursor == i && showCursor {
-					DrawCursor(xpos, ypos, maxHeight, pixWidth, u8Pix)
+					DrawCursor(xpos, ypos, maxHeight, pixWidth, u8Pix, f.CursorColour)
 				}
 
 				f.LastDrawnCharPos = i
@@ -319,7 +323,8 @@ func RenderPara(f *FormatParams, xpos, ypos, minX, minY, maxX, maxY, pixWidth, p
 			seekCursorPos = i
 
 		}
-
+		//fmt.Println("Setting last char pos to", i)
+		f.LastDrawnCharPos = i - 1
 	}
 	//fmt.Println("Cursor pos: ", f.Cursor)
 	SanityCheck(f, text)
@@ -413,7 +418,7 @@ func RenderTokenPara(f *FormatParams, xpos, ypos, minX, minY, maxX, maxY, pixWid
 			continue
 		}
 		if (showCursor && f.Cursor == i) && doDraw {
-			DrawCursor(xpos, ypos, maxHeight, pixWidth, u8Pix)
+			DrawCursor(xpos, ypos, maxHeight, pixWidth, u8Pix, f.CursorColour)
 		}
 		if i >= len(letters)-1 {
 			continue
@@ -455,7 +460,7 @@ func RenderTokenPara(f *FormatParams, xpos, ypos, minX, minY, maxX, maxY, pixWid
 			f.Line = f.Line + 1
 			f.StartLinePos = i
 			if f.Cursor == i && showCursor {
-				DrawCursor(xpos, ypos, maxHeight, pixWidth, u8Pix)
+				DrawCursor(xpos, ypos, maxHeight, pixWidth, u8Pix, f.CursorColour)
 			}
 		} else {
 			if i >= f.FirstDrawnCharPos {
@@ -523,7 +528,7 @@ func RenderTokenPara(f *FormatParams, xpos, ypos, minX, minY, maxX, maxY, pixWid
 				}
 
 				if f.Cursor == i && showCursor {
-					DrawCursor(xpos, ypos, maxHeight, pixWidth, u8Pix)
+					DrawCursor(xpos, ypos, maxHeight, pixWidth, u8Pix, f.CursorColour)
 				}
 
 				f.LastDrawnCharPos = i
