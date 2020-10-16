@@ -36,7 +36,7 @@ type FormatParams struct {
 
 //Create a new text formatter, with useful default parameters
 func NewFormatter() *FormatParams {
-	return &FormatParams{&RGBA{5, 5, 5, 255}, 0, 0, 0, 0, 0, 22.0, 0, 0, false, true, false, &RGBA{255, 128, 128, 255}, &RGBA{255, 0, 0, 255}}
+	return &FormatParams{&RGBA{5, 5, 5, 255}, 0, 0, 0, 0, 0, 22.0, 0, 0, false, true, false, &RGBA{255, 128, 128, 255}, &RGBA{255, 0, 0, 255}, &RGBA{255, 255, 0, 255}}
 }
 
 //Draw a cursor shape
@@ -194,7 +194,7 @@ func RenderPara(f *FormatParams, xpos, ypos, minX, minY, maxX, maxY, pixWidth, p
 			//Alternate colours on words
 			//colSwitch = !colSwitch
 			if colSwitch {
-				foreGround = &highlightColour
+				foreGround = highlightColour
 			} else {
 				foreGround = orig_colour
 			}
@@ -206,7 +206,7 @@ func RenderPara(f *FormatParams, xpos, ypos, minX, minY, maxX, maxY, pixWidth, p
 			nf := CopyFormatter(f)
 			nf.SelectStart = -1
 			nf.SelectEnd = -1
-			nf.Colour = &selectColour
+			nf.Colour = selectColour
 			/*if i-1<f.SelectStart {
 			      _, xpos, ypos = RenderPara(nf, xpos, ypos, 0, 0, maxX, maxY, pixWidth, pixHeight, cursorX, cursorY, u8Pix, "{", transparent, doDraw, showCursor)
 			  }
