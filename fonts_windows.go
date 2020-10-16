@@ -2,13 +2,47 @@
 package glim
 
 import (
+	"bytes"
+	"fmt"
+	"io"
+	"io/ioutil"
+	"log"
+
 	"golang.org/x/image/font/gofont/gomono"
+
 	//_ "golang.org/x/image/font/gofont/goregular"
 
 	"github.com/golang/freetype/truetype"
+	"github.com/kardianos/osext"
 )
 
-//Attempts to load a font using golang's built in truetype font library
+func LoadFileFromExecFolder(fileName string) *truetype.Font {
+	var f io.Reader
+	var fontBytes []byte
+	folderPath, err := osext.ExecutableFolder()
+	fullPath := fmt.Sprintf("%v/%v", folderPath, fileName)
+	fontBytes, err = ioutil.ReadFile(fullPath)
+
+	if err != nil {
+		log.Printf("Could not get exec path, falling back to system font\n")
+		f = bytes.NewReader(gomono.TTF)
+		fontBytes, err = ioutil.ReadAll(f)
+
+		if err != nil {
+			log.Println(err)
+			panic(err)
+		}
+	}
+
+	txtFont, err1 := truetype.Parse(fontBytes)
+	if err1 != nil {
+		log.Println(err1)
+		panic(err1)
+	}
+
+	return txtFont
+}
+
 func LoadFont(fileName string) *truetype.Font {
 
 	if fontCache == nil {
@@ -21,7 +55,7 @@ func LoadFont(fileName string) *truetype.Font {
 
 	//fontBytes := sysFont.Default()
 
-	txtFont, _ := truetype.Parse(gomono.TTF)
+	txtFont := LoadFileFromExecFolder(fileName)
 	fontCache[fileName] = txtFont
 	return txtFont
 }

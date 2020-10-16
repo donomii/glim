@@ -1,26 +1,25 @@
 // GL Image library.  Routines for handling images and textures in GO OpenGL (especially with the GoMobile framework)
 package glim
 
-import "math"
 import (
 	"image/draw"
-	_ "image/jpeg"
-	_ "image/png"
+	"math"
 
-	"unicode/utf8"
+	_ "image/jpeg"
 
 	"fmt"
+	"image"
+	"image/color"
+	"image/png"
+	_ "image/png"
 	"log"
+	"math/rand"
 	"os"
+	"unicode/utf8"
 
 	"github.com/golang/freetype/truetype"
 	"golang.org/x/image/font"
 	"golang.org/x/image/math/fixed"
-
-	"image"
-	"image/color"
-	"image/png"
-	"math/rand"
 )
 
 type Thunk func()
@@ -321,7 +320,8 @@ func RGBAtoColor(in RGBA) color.RGBA {
 //
 //FIXME some fonts might not compeletely fit in the texture (usually the decorative ones which extend into another letter)
 func DrawStringRGBA(txtSize float64, fontColor RGBA, txt, fontfile string) (*image.RGBA, *font.Face) {
-	//log.Printf("Drawing text (%v), colour (%v), size(%v)\n", txt, fontColor, txtSize)
+	log.Printf("Drawing text (%v), colour (%v), size(%v)\n", txt, fontColor, txtSize)
+	fmt.Printf("Drawing text (%v), colour (%v), size(%v)\n", txt, fontColor, txtSize)
 	cacheKey := fmt.Sprintf("%v,%v,%v", txtSize, fontColor, txt)
 	if renderCache == nil {
 		renderCache = map[string]*image.RGBA{}
@@ -378,6 +378,65 @@ func DrawStringRGBA(txtSize float64, fontColor RGBA, txt, fontfile string) (*ima
 	return rgba, &d.Face
 }
 
+func DrawGlyphRGBA(txtSize float64, fontColor RGBA, glyph rune, fontfile string) (*image.RGBA, *font.Face) {
+	log.Printf("Drawing text (%v), colour (%v), size(%v)\n", glyph, fontColor, txtSize)
+	fmt.Printf("Drawing text (%v), colour (%v), size(%v)\n", string(glyph), fontColor, txtSize)
+	cacheKey := fmt.Sprintf("%v,%v,%v", txtSize, fontColor, glyph)
+	if renderCache == nil {
+		renderCache = map[string]*image.RGBA{}
+	}
+	if faceCache == nil {
+		faceCache = map[string]*font.Face{}
+	}
+	im, ok := renderCache[cacheKey]
+	face, ok1 := faceCache[cacheKey]
+	if ok && ok1 {
+		return im, face
+	}
+
+	txtFont := LoadFont(fontfile)
+	d := &font.Drawer{
+		Src: image.NewUniform(RGBAtoColor(fontColor)), // 字体颜色
+		Face: truetype.NewFace(txtFont, &truetype.Options{
+			Size:    txtSize,
+			DPI:     96,
+			Hinting: font.HintingFull,
+		}),
+	}
+	fface := d.Face
+
+	fuckedRect, _, _ := fface.GlyphBounds(glyph)
+	// letterWidth := fixed2int(fuckedRect.Max.X)
+	Xadj := Fixed2int(fuckedRect.Min.X)
+	if Xadj < 0 {
+		Xadj = Xadj * -1
+	}
+	// fuckedRect, _, _ = fface.GlyphBounds(glyph)
+	// letterHeight := fixed2int(fuckedRect.Max.Y)
+	//ascend := fuckedRect.min.Y
+	//]
+	targetWidth := d.MeasureString(string(glyph)).Ceil() * 2
+	targetHeight := int(txtSize) * 3
+	rect := image.Rect(0, 0, targetWidth, targetHeight)
+	//rect := image.Rect(0, 0, 30, 30)
+	rgba := image.NewRGBA(rect)
+	d.Dst = rgba
+
+	d.Dot = fixed.Point26_6{
+		X: fixed.I(Xadj),
+		Y: fixed.I(int(float32(targetHeight) * float32(1) / float32(2.5))), //fixed.I(rect.Max.Y/3), //rect.Max.Y*2/3), //FIXME
+	}
+	d.DrawString(string(glyph))
+	renderCache[cacheKey] = rgba
+	faceCache[cacheKey] = &d.Face
+	//imgBytes := rgba.Pix
+	//for i,v := range imgBytes {
+	//imgBytes[i] = 255 - v
+	//}
+
+	return rgba, &d.Face
+}
+
 func Fixed2int(n fixed.Int26_6) int {
 	return n.Round()
 }
@@ -420,17 +479,17 @@ func PasteBytes(srcWidth, srcHeight int, srcBytes []byte, xpos, ypos, dstWidth, 
 				dstB := u8Pix[dstOff+2]
 
 				srcA := float64(srcBytes[srcOff+3]) / 255.0
-				dstA := float64(u8Pix[dstOff+3])/255.0
+				dstA := float64(u8Pix[dstOff+3]) / 255.0
 
 				outA := srcA + dstA*(1-srcA)
-				nDstA := dstA*(1-srcA)
+				nDstA := dstA * (1 - srcA)
 
 				outR := byte(0)
 				outG := byte(0)
 				outB := byte(0)
-				outR = byte((float64(r)*srcA + float64(dstR)*nDstA) )
-				outG = byte((float64(g)*srcA + float64(dstG)*nDstA) )
-				outB = byte((float64(b)*srcA + float64(dstB)*nDstA) )
+				outR = byte((float64(r)*srcA + float64(dstR)*nDstA))
+				outG = byte((float64(g)*srcA + float64(dstG)*nDstA))
+				outB = byte((float64(b)*srcA + float64(dstB)*nDstA))
 				//if srcBytes[i*srcWidth*4+j*4] > u8Pix[(ypos+i)*dstWidth*bpp+xpos*bpp+j*bpp] {
 				////log2Buff(fmt.Sprintf("Source: (%v,%v), destination: (%v,%v)\n", j,i,xpos+j, ypos+i))
 				//copy(u8Pix[dstOff:dstOff+4], srcBytes[srcOff:srcOff+4])
@@ -438,7 +497,7 @@ func PasteBytes(srcWidth, srcHeight int, srcBytes []byte, xpos, ypos, dstWidth, 
 				u8Pix[dstOff+0] = outR
 				u8Pix[dstOff+1] = outG
 				u8Pix[dstOff+2] = outB
-				u8Pix[dstOff+3] = byte(outA*255)
+				u8Pix[dstOff+3] = byte(outA * 255)
 				if copyAlpha { //Needed because the default alpha is 0, which causes multiple pastes to fully overwrite the previous pastes
 					if srcBytes[srcOff+3] > u8Pix[dstOff+3] {
 						u8Pix[dstOff+3] = srcBytes[srcOff+3]

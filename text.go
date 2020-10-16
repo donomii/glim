@@ -12,9 +12,7 @@ import (
 	_ "image/png"
 	"log"
 	"regexp"
-	"strings"
 	"unicode"
-	"unicode/utf8"
 )
 
 //Holds all the configuration details for drawing a string into a texture.  This structure gets written to during the draw
@@ -148,8 +146,8 @@ func RenderPara(f *FormatParams, xpos, ypos, minX, minY, maxX, maxY, pixWidth, p
 	colSwitch := false
 
 	log.Printf("Cursor: %v\n", f.Cursor)
-	letters := strings.Split(text, "")
-	letters = append(letters, " ")
+	letters := []rune(text)
+	letters = append(letters, []rune(" ")[0])
 	orig_fontSize := f.FontSize
 	defer func() {
 		f.FontSize = orig_fontSize
@@ -184,7 +182,7 @@ func RenderPara(f *FormatParams, xpos, ypos, minX, minY, maxX, maxY, pixWidth, p
 		}
 		//foreGround = orig_colour
 
-		if unicode.IsSpace([]rune(v)[0]) {
+		if unicode.IsSpace(v) {
 			//if i>0 && letters[i-1] == " " {
 			//f.Colour = &color.RGBA{255,0,0,255}
 			//f.FontSize = f.FontSize*1.2
@@ -200,8 +198,8 @@ func RenderPara(f *FormatParams, xpos, ypos, minX, minY, maxX, maxY, pixWidth, p
 				foreGround = orig_colour
 			}
 		}
-		if v == "\t" {
-			v = "    "
+		if v == []rune("\t")[0] {
+			v = []rune(" ")[0] //FIXME
 		}
 		if (i >= f.SelectStart) && (i <= f.SelectEnd) && (f.SelectStart != f.SelectEnd) {
 			nf := CopyFormatter(f)
@@ -246,13 +244,19 @@ func RenderPara(f *FormatParams, xpos, ypos, minX, minY, maxX, maxY, pixWidth, p
 				if wobblyMode {
 					ytweak = int(math.Sin(float64(xpos)) * 5.0)
 				}
-				img, face := DrawStringRGBA(f.FontSize, *foreGround, v, "f1.ttf")
+				fontFile := "jbmono.ttf"
+				if v > 0x3000 {
+					fontFile = "bananaslipplus.ttf"
+				}
+
+				img, face := DrawGlyphRGBA(f.FontSize, *foreGround, v, fontFile)
 				XmaX, YmaX := img.Bounds().Max.X, img.Bounds().Max.Y
 				imgBytes := img.Pix
 				//imgBytes := Rotate270(XmaX, YmaX, img.Pix)
 				//XmaX, YmaX = YmaX, XmaX
 				fa := *face
-				glyph, _ := utf8.DecodeRuneInString(v)
+				//glyph, _ := utf8.DecodeRuneInString(v)
+				glyph := v
 				letterWidth_F, _ := fa.GlyphAdvance(glyph)
 				letterWidth = Fixed2int(letterWidth_F)
 				//fuckedRect, _, _ := fa.GlyphBounds(glyph)
