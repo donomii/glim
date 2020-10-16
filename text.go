@@ -33,6 +33,7 @@ type FormatParams struct {
 	Vertical          bool    //Draw texture vertically for Chinese/Japanese rendering
 	SelectColour      *RGBA   //Selection text colour
 	CursorColour      *RGBA
+	HighlightColour   *RGBA
 }
 
 //Create a new text formatter, with useful default parameters
@@ -143,8 +144,8 @@ func RenderPara(f *FormatParams, xpos, ypos, minX, minY, maxX, maxY, pixWidth, p
 	vert := f.Vertical
 	orig_colour := f.Colour
 	foreGround := f.Colour
-	selectColour := RGBA{255, 1, 1, 255}
-	highlightColour := RGBA{1, 255, 1, 255}
+	selectColour := f.SelectColour
+	highlightColour := f.HighlightColour
 	colSwitch := false
 
 	log.Printf("Cursor: %v\n", f.Cursor)
