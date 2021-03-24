@@ -1,6 +1,6 @@
 // mobilegl.go
 
-//+build !coregl
+//+build !coregl mobile
 
 package glim
 
