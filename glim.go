@@ -321,7 +321,6 @@ func RGBAtoColor(in RGBA) color.RGBA {
 //FIXME some fonts might not compeletely fit in the texture (usually the decorative ones which extend into another letter)
 func DrawStringRGBA(txtSize float64, fontColor RGBA, txt, fontfile string) (*image.RGBA, *font.Face) {
 	log.Printf("Drawing text (%v), colour (%v), size(%v)\n", txt, fontColor, txtSize)
-	fmt.Printf("Drawing text (%v), colour (%v), size(%v)\n", txt, fontColor, txtSize)
 	cacheKey := fmt.Sprintf("%v,%v,%v", txtSize, fontColor, txt)
 	if renderCache == nil {
 		renderCache = map[string]*image.RGBA{}
@@ -380,7 +379,6 @@ func DrawStringRGBA(txtSize float64, fontColor RGBA, txt, fontfile string) (*ima
 
 func DrawGlyphRGBA(txtSize float64, fontColor RGBA, glyph rune, fontfile string) (*image.RGBA, *font.Face) {
 	log.Printf("Drawing text (%v), colour (%v), size(%v)\n", glyph, fontColor, txtSize)
-	fmt.Printf("Drawing text (%v), colour (%v), size(%v)\n", string(glyph), fontColor, txtSize)
 	cacheKey := fmt.Sprintf("%v,%v,%v", txtSize, fontColor, glyph)
 	if renderCache == nil {
 		renderCache = map[string]*image.RGBA{}
