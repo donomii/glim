@@ -137,6 +137,13 @@ func CopyFormatter(inF *FormatParams) *FormatParams {
 func RenderPara(f *FormatParams, xpos, ypos, minX, minY, maxX, maxY, pixWidth, pixHeight, cursorX, cursorY int, u8Pix []uint8, text string, transparent bool, doDraw bool, showCursor bool) (int, int, int) {
 	//re := regexp.MustCompile(`\t`)
 	//text = re.ReplaceAllLiteralString(text, "    ")
+	//strs := strings.SplitAfter(text, " ")
+	letterz := []rune(text)
+	out := [][]string{}
+	for _, v := range letterz {
+		out = append(out, []string{"", string(v)})
+	}
+	return RenderTokenPara(f, xpos, ypos, minX, minY, maxX, maxY, pixWidth, pixHeight, cursorX, cursorY, u8Pix, out, transparent, doDraw, showCursor)
 	cursorDist := 9999999
 	seekCursorPos := 0
 	vert := f.Vertical
@@ -362,17 +369,18 @@ func RenderTokenPara(f *FormatParams, xpos, ypos, minX, minY, maxX, maxY, pixWid
 	var letters []string
 	for _, v := range tokens {
 		re := regexp.MustCompile(`\\t`)
-		v := re.ReplaceAllLiteralString(v[1], "    ")
-		letters = append(letters, v)
+		t := re.ReplaceAllLiteralString(v[1], "    ")
+		letters = append(letters, t)
 	}
 	var markup []string
 	for _, v := range tokens {
 		re := regexp.MustCompile(`\\t`)
-		v := re.ReplaceAllLiteralString(v[0], "    ")
-		markup = append(markup, v)
+		m := re.ReplaceAllLiteralString(v[0], "    ")
+		markup = append(markup, m)
 	}
 
 	letters = append(letters, " ")
+	markup = append(markup, " ")
 	orig_fontSize := f.FontSize
 	defer func() {
 		f.FontSize = orig_fontSize
@@ -429,22 +437,6 @@ func RenderTokenPara(f *FormatParams, xpos, ypos, minX, minY, maxX, maxY, pixWid
 			continue
 		}
 		//foreGround = orig_colour
-
-		if unicode.IsSpace([]rune(v)[0]) {
-			//if i>0 && letters[i-1] == " " {
-			//f.Colour = &color.RGBA{255,0,0,255}
-			//f.FontSize = f.FontSize*1.2
-			////log.Printf("Oversize start for %v at %v\n", v, i)
-			//} else {
-			//f.Colour = &color.RGBA{1,1,1,255}
-			//}
-			//colSwitch = !colSwitch
-			//if colSwitch {
-			//	foreGround = &highlightColour
-			//} else {
-			//	foreGround = orig_colour
-			//}
-		}
 
 		if v == " " || isNewLine(v) {
 			f.FontSize = orig_fontSize
