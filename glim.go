@@ -720,3 +720,23 @@ func Invert(m []byte) []byte {
 	}
 	return m
 }
+
+//Invert the alpha channel of all pixels
+//
+//i.e. set  alpha channel to 255-n
+func InvertAlpha(m []byte) []byte {
+	for i := 0; i < len(m); i = i + 4 {
+		m[i+3] = 255 - m[i+3]
+	}
+	return m
+}
+
+//Invert the alpha channel of all pixels
+//
+//i.e. set  alpha channel to 255-n
+func ForceAlpha(m []byte, val uint8) []byte {
+	for i := 0; i < len(m); i = i + 4 {
+		m[i+3] = val
+	}
+	return m
+}
