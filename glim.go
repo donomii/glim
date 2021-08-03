@@ -70,14 +70,6 @@ func Abs64(x int64) int64 {
 	return x
 }
 
-
-package main
-
-import (
-	"image"
-	"image/draw"
-)
-
 func clonePix(b []uint8) []byte {
 	c := make([]uint8, len(b))
 	copy(c, b)
@@ -132,7 +124,6 @@ func CloneImage(src image.Image) draw.Image {
 func main() {
 	println("FOO")
 }
-
 
 // Calculate the pixel difference between two images.
 //
