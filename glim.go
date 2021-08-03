@@ -70,6 +70,70 @@ func Abs64(x int64) int64 {
 	return x
 }
 
+
+package main
+
+import (
+	"image"
+	"image/draw"
+)
+
+func clonePix(b []uint8) []byte {
+	c := make([]uint8, len(b))
+	copy(c, b)
+	return c
+}
+
+func CopyGFormatRGBA(src image.Image) draw.Image {
+	b := src.Bounds()
+	dst := image.NewRGBA(b)
+	draw.Draw(dst, b, src, b.Min, draw.Src)
+	return dst
+}
+
+func CloneImage(src image.Image) draw.Image {
+	switch s := src.(type) {
+	case *image.Alpha:
+		clone := *s
+		clone.Pix = clonePix(s.Pix)
+		return &clone
+	case *image.Alpha16:
+		clone := *s
+		clone.Pix = clonePix(s.Pix)
+		return &clone
+	case *image.Gray:
+		clone := *s
+		clone.Pix = clonePix(s.Pix)
+		return &clone
+	case *image.Gray16:
+		clone := *s
+		clone.Pix = clonePix(s.Pix)
+		return &clone
+	case *image.NRGBA:
+		clone := *s
+		clone.Pix = clonePix(s.Pix)
+		return &clone
+	case *image.NRGBA64:
+		clone := *s
+		clone.Pix = clonePix(s.Pix)
+		return &clone
+	case *image.RGBA:
+		clone := *s
+		clone.Pix = clonePix(s.Pix)
+		return &clone
+	case *image.RGBA64:
+		clone := *s
+		clone.Pix = clonePix(s.Pix)
+		return &clone
+	}
+	return nil
+}
+
+func main() {
+	println("FOO")
+}
+
+
 // Calculate the pixel difference between two images.
 //
 // This does a simple pixel compare, by sutracting the RGB pixel values.  Itdoes not take into account perceptual differences or gamma or anything clever like that
