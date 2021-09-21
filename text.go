@@ -2,8 +2,10 @@
 package glim
 
 import (
+	"fmt"
 	"math"
 	_ "net/http/pprof"
+	"strings"
 
 	//"fmt"
 	//"fmt"
@@ -123,6 +125,12 @@ func CopyFormatter(inF *FormatParams) *FormatParams {
 	return out
 }
 
+func CopyPix(pix []uint8) []uint8 {
+	var new []uint8 = make([]uint8, len(pix))
+	copy(new, pix)
+	return new
+}
+
 //Draw some text into a 32bit RGBA byte array, wrapping where needed.  Supports all the options I need for a basic word processor, including vertical text, and different sized lines
 //
 //This was a bad idea.  Instead of all the if statements, we should just assume everything is left-to-right, top-to-bottom, and then rotate the entire block afterwards (we will also have to rotate the characters around their own center)
@@ -143,7 +151,7 @@ func RenderPara(f *FormatParams, xpos, ypos, minX, minY, maxX, maxY, pixWidth, p
 	for _, v := range letterz {
 		out = append(out, []string{"", string(v)})
 	}
-	return RenderTokenPara(f, xpos, ypos, minX, minY, maxX, maxY, pixWidth, pixHeight, cursorX, cursorY, u8Pix, out, transparent, doDraw, showCursor)
+	//return RenderTokenPara(f, xpos, ypos, minX, minY, maxX, maxY, pixWidth, pixHeight, cursorX, cursorY, u8Pix, out, transparent, doDraw, showCursor)
 	cursorDist := 9999999
 	seekCursorPos := 0
 	vert := f.Vertical
@@ -257,9 +265,54 @@ func RenderPara(f *FormatParams, xpos, ypos, minX, minY, maxX, maxY, pixWidth, p
 					fontFile = "bananaslipplus.ttf"
 				}
 
+				glowCol := RGBA{0, 0, 0, 0}
+				if strings.ContainsRune("aeiouy", v) {
+					glowCol = RGBA{128, 128, 128, 255}
+				} else if strings.ContainsRune("pbfvmw", v) {
+
+					glowCol = RGBA{255, 0, 0, 255}
+				} else if strings.ContainsRune("td", v) {
+					glowCol = RGBA{255, 255, 0, 255}
+
+				} else if strings.ContainsRune("sznlr", v) {
+					glowCol = RGBA{0, 255, 0, 255}
+
+				} else if strings.ContainsRune("kgjh", v) {
+					glowCol = RGBA{0, 255, 255, 255}
+				} else {
+					glowCol = RGBA{0, 0, 255, 255}
+				}
 				img, face := DrawGlyphRGBA(f.FontSize, *foreGround, v, fontFile)
 				XmaX, YmaX := img.Bounds().Max.X, img.Bounds().Max.Y
 				imgBytes := img.Pix
+
+				m := CopyPix(imgBytes)
+				for i := 0; i < len(m); i = i + 4 {
+
+					if m[i] > 0 ||
+						m[i+1] > 0 ||
+						m[i+2] > 0 ||
+						m[i+3] > 0 {
+						m[i] = glowCol[0]
+						m[i] = 255
+						m[i+1] = 255
+						m[i+2] = 255
+						m[i+3] = 255
+
+					}
+
+					if m[i] == 0 &&
+						m[i+1] == 0 &&
+						m[i+2] == 0 &&
+						m[i+3] == 0 {
+						m[i] = glowCol[0]
+						m[i+1] = glowCol[1]
+						m[i+2] = glowCol[2]
+						m[i+3] = glowCol[3]
+					}
+
+				}
+				imgBytes = m
 				//imgBytes := Rotate270(XmaX, YmaX, img.Pix)
 				//XmaX, YmaX = YmaX, XmaX
 				fa := *face
@@ -312,6 +365,7 @@ func RenderPara(f *FormatParams, xpos, ypos, minX, minY, maxX, maxY, pixWidth, p
 				if doDraw {
 					//PasteImg(img, xpos, ypos + ytweak, u8Pix, transparent)
 					//PasteBytes(XmaX, YmaX, imgBytes, xpos, ypos+ytweak, int(pixWidth), int(pixHeight), u8Pix, transparent)
+					fmt.Println("Pasting letter")
 					PasteBytes(XmaX, YmaX, imgBytes, xpos, ypos+ytweak, int(pixWidth), int(pixHeight), u8Pix, true, false, false)
 				}
 
