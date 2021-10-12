@@ -2,7 +2,6 @@
 package glim
 
 import (
-	"fmt"
 	"math"
 	_ "net/http/pprof"
 	"strings"
