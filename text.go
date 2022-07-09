@@ -4,16 +4,14 @@ package glim
 import (
 	"math"
 	_ "net/http/pprof"
-	"strings"
 
 	//"fmt"
-	//"fmt"
+	_ "fmt"
 	_ "image/jpeg"
 
 	_ "image/png"
 	"log"
 	"regexp"
-	"unicode"
 )
 
 //Holds all the configuration details for drawing a string into a texture.  This structure gets written to during the draw
@@ -146,267 +144,32 @@ func RenderPara(f *FormatParams, xpos, ypos, minX, minY, maxX, maxY, pixWidth, p
 	//text = re.ReplaceAllLiteralString(text, "    ")
 	//strs := strings.SplitAfter(text, " ")
 	letterz := []rune(text)
-	out := [][]string{}
+	out := []Token{}
 	for _, v := range letterz {
-		out = append(out, []string{"", string(v)})
+		out = append(out, Token{string(v), Style{ForegroundColour: f.Colour}})
 	}
-	//return RenderTokenPara(f, xpos, ypos, minX, minY, maxX, maxY, pixWidth, pixHeight, cursorX, cursorY, u8Pix, out, transparent, doDraw, showCursor)
-	cursorDist := 9999999
-	seekCursorPos := 0
-	vert := f.Vertical
-	orig_colour := f.Colour
-	foreGround := f.Colour
-	selectColour := f.SelectColour
-	highlightColour := f.HighlightColour
-	colSwitch := false
+	return RenderTokenPara(f, xpos, ypos, minX, minY, maxX, maxY, pixWidth, pixHeight, cursorX, cursorY, u8Pix, out, transparent, doDraw, showCursor)
 
-	log.Printf("Cursor: %v\n", f.Cursor)
-	letters := []rune(text)
-	letters = append(letters, []rune(" ")[0])
-	orig_fontSize := f.FontSize
-	defer func() {
-		f.FontSize = orig_fontSize
-		SanityCheck(f, text)
-	}()
-
-	if vert {
-		xpos = maxX
-	}
-	gx, gy := GetGlyphSize(f.FontSize, text)
-	//log.Printf("Chose position %v, maxX: %v\n", pos, maxX)
-	pos := MoveInBounds(Vec2{xpos, ypos}, Vec2{minX, minY}, Vec2{maxX, maxY}, Vec2{gx, gy}, Vec2{0, 1}, Vec2{-1, 0}, 10)
-	xpos = pos.X
-	ypos = pos.Y
-	maxHeight := int(orig_fontSize)
-	letterWidth := 100
-	wobblyMode := false
-	if f.Cursor > len(letters) {
-		f.Cursor = len(letters)
-	}
-	//sanityCheck(f,txt)
-	for i, v := range letters {
-		log.Printf("Loop for letter %v of %v %v", i, len(letters), v)
-		if i < f.FirstDrawnCharPos {
-			continue
-		}
-		if (showCursor && f.Cursor == i) && doDraw {
-			DrawCursor(xpos, ypos, maxHeight, pixWidth, u8Pix, f.CursorColour)
-		}
-		if i >= len(letters)-1 {
-			continue
-		}
-		//foreGround = orig_colour
-
-		if unicode.IsSpace(v) {
-			//if i>0 && letters[i-1] == " " {
-			//f.Colour = &color.RGBA{255,0,0,255}
-			//f.FontSize = f.FontSize*1.2
-			////log.Printf("Oversize start for %v at %v\n", v, i)
-			//} else {
-			//f.Colour = &color.RGBA{1,1,1,255}
-			//}
-			//Alternate colours on words
-			//colSwitch = !colSwitch
-			if colSwitch {
-				foreGround = highlightColour
-			} else {
-				foreGround = orig_colour
-			}
-		}
-		if v == []rune("\t")[0] {
-			v = []rune(" ")[0] //FIXME
-		}
-		if (i >= f.SelectStart) && (i <= f.SelectEnd) && (f.SelectStart != f.SelectEnd) {
-			nf := CopyFormatter(f)
-			nf.SelectStart = -1
-			nf.SelectEnd = -1
-			nf.Colour = selectColour
-			/*if i-1<f.SelectStart {
-			      _, xpos, ypos = RenderPara(nf, xpos, ypos, 0, 0, maxX, maxY, pixWidth, pixHeight, cursorX, cursorY, u8Pix, "{", transparent, doDraw, showCursor)
-			  }
-			  if i+1>f.SelectEnd {
-			      _, xpos, ypos = RenderPara(nf, xpos, ypos, 0, 0, maxX, maxY, pixWidth, pixHeight, cursorX, cursorY, u8Pix, "}", transparent, doDraw, showCursor)
-			  }*/
-
-			//fmt.Printf("%v is between %v and %v\n", i , f.SelectStart, f.SelectEnd)
-			foreGround = nf.Colour
-		}
-
-		if (string(text[i]) == " ") || (text[i] == byte(10)) {
-			f.FontSize = orig_fontSize
-			log.Printf("Oversize end for %v at %v\n", v, i)
-		}
-		if text[i] == byte(10) {
-			log.Printf("Newline: %v, %v, %v: %+v\n", string(text[i]), text[i], i, f)
-			if vert {
-				xpos = xpos - maxHeight
-				ypos = minY
-			} else {
-				ypos = ypos + maxHeight
-				xpos = minX
-				if i > 0 && string(text[i-1]) != "\n" {
-					maxHeight = 12 //FIXME
-				}
-			}
-			f.Line++
-			f.StartLinePos = i
-			if f.Cursor == i && showCursor {
-				DrawCursor(xpos, ypos, maxHeight, pixWidth, u8Pix, f.CursorColour)
-			}
-		} else {
-			if i >= f.FirstDrawnCharPos {
-				ytweak := 0
-				if wobblyMode {
-					ytweak = int(math.Sin(float64(xpos)) * 5.0)
-				}
-				fontFile := "jbmono.ttf"
-				if v > 0x3000 {
-					fontFile = "bananaslipplus.ttf"
-				}
-
-				glowCol := RGBA{0, 0, 0, 0}
-				if strings.ContainsRune("aeiouy", v) {
-					glowCol = RGBA{128, 128, 128, 255}
-				} else if strings.ContainsRune("pbfvmw", v) {
-
-					glowCol = RGBA{255, 0, 0, 255}
-				} else if strings.ContainsRune("td", v) {
-					glowCol = RGBA{255, 255, 0, 255}
-
-				} else if strings.ContainsRune("sznlr", v) {
-					glowCol = RGBA{0, 255, 0, 255}
-
-				} else if strings.ContainsRune("kgjh", v) {
-					glowCol = RGBA{0, 255, 255, 255}
-				} else {
-					glowCol = RGBA{0, 0, 255, 255}
-				}
-				img, face := DrawGlyphRGBA(f.FontSize, *foreGround, v, fontFile)
-				XmaX, YmaX := img.Bounds().Max.X, img.Bounds().Max.Y
-				imgBytes := img.Pix
-
-				m := CopyPix(imgBytes)
-				for i := 0; i < len(m); i = i + 4 {
-
-					if m[i] > 0 ||
-						m[i+1] > 0 ||
-						m[i+2] > 0 ||
-						m[i+3] > 0 {
-						m[i] = glowCol[0]
-						m[i] = 255
-						m[i+1] = 255
-						m[i+2] = 255
-						m[i+3] = 255
-
-					}
-
-					if m[i] == 0 &&
-						m[i+1] == 0 &&
-						m[i+2] == 0 &&
-						m[i+3] == 0 {
-						m[i] = glowCol[0]
-						m[i+1] = glowCol[1]
-						m[i+2] = glowCol[2]
-						m[i+3] = glowCol[3]
-					}
-
-				}
-				imgBytes = m
-				//imgBytes := Rotate270(XmaX, YmaX, img.Pix)
-				//XmaX, YmaX = YmaX, XmaX
-				fa := *face
-				//glyph, _ := utf8.DecodeRuneInString(v)
-				glyph := v
-				letterWidth_F, _ := fa.GlyphAdvance(glyph)
-				letterWidth = Fixed2int(letterWidth_F)
-				//fuckedRect, _, _ := fa.GlyphBounds(glyph)
-				//letterHeight := fixed2int(fuckedRect.Max.Y)
-				letterHeight := Fixed2int(fa.Metrics().Height)
-				//letterWidth := XmaX
-				//letterHeight = letterHeight
-
-				if vert && (xpos < 0) {
-					if vert {
-						f.LastDrawnCharPos = i - 1
-						return seekCursorPos, xpos, ypos
-					} else {
-						pos := MoveInBounds(Vec2{xpos, ypos}, Vec2{minX, minY}, Vec2{maxX, maxY}, Vec2{gx, gy}, Vec2{0, 1}, Vec2{-1, 0}, 10)
-						xpos = pos.X
-						ypos = pos.Y
-					}
-				}
-				if xpos+XmaX > maxX {
-					if !vert {
-						ypos = ypos + maxHeight
-						maxHeight = 0
-						xpos = minX
-						f.Line++
-						f.StartLinePos = i
-					}
-				}
-
-				if (ypos+YmaX+ytweak+1 > maxY) || (ypos+ytweak < 0) {
-					if vert {
-						xpos = xpos - maxHeight
-						maxHeight = 0
-						ypos = minY
-						f.Line++
-						f.StartLinePos = i
-					} else {
-						f.LastDrawnCharPos = i - 1
-						return seekCursorPos, xpos, ypos
-					}
-				}
-				pos := MoveInBounds(Vec2{xpos, ypos}, Vec2{minX, minY}, Vec2{maxX, maxY}, Vec2{XmaX, YmaX}, Vec2{0, 1}, Vec2{-1, 0}, 10)
-				xpos = pos.X
-				ypos = pos.Y
-
-				if doDraw {
-					//PasteImg(img, xpos, ypos + ytweak, u8Pix, transparent)
-					//PasteBytes(XmaX, YmaX, imgBytes, xpos, ypos+ytweak, int(pixWidth), int(pixHeight), u8Pix, transparent)
-					//fmt.Println("Pasting letter")
-					PasteBytes(XmaX, YmaX, imgBytes, xpos, ypos+ytweak, int(pixWidth), int(pixHeight), u8Pix, true, false, false)
-				}
-
-				if f.Cursor == i && showCursor {
-					DrawCursor(xpos, ypos, maxHeight, pixWidth, u8Pix, f.CursorColour)
-				}
-
-				f.LastDrawnCharPos = i
-				maxHeight = MaxI(maxHeight, letterHeight)
-
-				if vert {
-					ypos += maxHeight
-				} else {
-					xpos += letterWidth
-				}
-			}
-		}
-		d := (cursorX-xpos+letterWidth)*(cursorX-xpos+letterWidth) + (cursorY-ypos-maxHeight/2)*(cursorY-ypos-maxHeight/2)
-		if d < cursorDist {
-			cursorDist = d
-			seekCursorPos = i
-
-		}
-		//fmt.Println("Setting last char pos to", i)
-		f.LastDrawnCharPos = i - 1
-	}
-	//fmt.Println("Cursor pos: ", f.Cursor)
-	SanityCheck(f, text)
-	log.Println("Render paragraph complete")
-	return seekCursorPos, xpos, ypos
 }
 
 func isNewLine(v string) bool {
 	return (v == "\n") || (v == `\n`)
 }
 
-func RenderTokenPara(f *FormatParams, xpos, ypos, minX, minY, maxX, maxY, pixWidth, pixHeight, cursorX, cursorY int, u8Pix []uint8, tokens [][]string, transparent bool, doDraw bool, showCursor bool) (int, int, int) {
+type Style struct {
+	ForegroundColour *RGBA //Text colour
+
+}
+
+type Token struct {
+	Text  string
+	Style Style
+}
+
+func RenderTokenPara(f *FormatParams, xpos, ypos, minX, minY, maxX, maxY, pixWidth, pixHeight, cursorX, cursorY int, u8Pix []uint8, tokens []Token, transparent bool, doDraw bool, showCursor bool) (int, int, int) {
 	cursorDist := 9999999
 	seekCursorPos := 0
 	vert := f.Vertical
-	orig_colour := f.Colour
-	foreGround := f.Colour
 	//selectColour := color.RGBA{255, 1, 1, 255}
 	//highlightColour := color.RGBA{1, 255, 1, 255}
 	//colSwitch := false
@@ -415,25 +178,17 @@ func RenderTokenPara(f *FormatParams, xpos, ypos, minX, minY, maxX, maxY, pixWid
 		//scrollToCursor(f, text)  //Use pageup function, once it is fast enough
 	}
 	//log.Printf("Cursor: %v\n", f.Cursor)
-
-	punctuationColour := RGBA{255, 1, 1, 255}
-	nameColour := RGBA{1, 255, 1, 255}
-	builtinColour := RGBA{1, 1, 255, 255}
 	var letters []string
+	var markup []Style
 	for _, v := range tokens {
 		re := regexp.MustCompile(`\\t`)
-		t := re.ReplaceAllLiteralString(v[1], "    ")
+		t := re.ReplaceAllLiteralString(v.Text, "    ")
 		letters = append(letters, t)
-	}
-	var markup []string
-	for _, v := range tokens {
-		re := regexp.MustCompile(`\\t`)
-		m := re.ReplaceAllLiteralString(v[0], "    ")
-		markup = append(markup, m)
+		markup = append(markup, v.Style)
 	}
 
 	letters = append(letters, " ")
-	markup = append(markup, " ")
+	markup = append(markup, Style{})
 	orig_fontSize := f.FontSize
 	defer func() {
 		f.FontSize = orig_fontSize
@@ -458,22 +213,14 @@ func RenderTokenPara(f *FormatParams, xpos, ypos, minX, minY, maxX, maxY, pixWid
 	//sanityCheck(f,txt)
 	for i, v := range letters {
 
-		styleName := markup[i]
+		style := markup[i]
 
-		foreGround = orig_colour
-		if styleName == "Token.Name" {
-			foreGround = &nameColour
+		foreGround := style.ForegroundColour
+		if foreGround == nil {
+			foreGround = &RGBA{255, 255, 255, 255}
 		}
 
-		if styleName == "Token.Punctuation" {
-			foreGround = &punctuationColour
-		}
-
-		if styleName == "Token.Name.Builtin" {
-			foreGround = &builtinColour
-		}
-
-		//fmt.Printf("%v: '%v'(%V)\n", i , v, v)
+		//fmt.Printf("%v: '%v'(%V)\n", i, v, v)
 		if isNewLine(v) {
 			v = "\n"
 		}
