@@ -2,20 +2,20 @@
 package glim
 
 import (
-	"image/draw"
-	"math"
-
-	_ "image/jpeg"
-
 	"fmt"
 	"image"
 	"image/color"
+	"image/draw"
 	"image/png"
-	_ "image/png"
 	"log"
+	"math"
 	"math/rand"
 	"os"
 	"unicode/utf8"
+
+	_ "image/jpeg"
+
+	_ "image/png"
 
 	"github.com/golang/freetype/truetype"
 	"golang.org/x/image/font"
@@ -26,20 +26,22 @@ type Thunk func()
 
 type RGBA []uint8
 
-var renderCache map[string]*image.RGBA
-var faceCache map[string]*font.Face
-var fontCache map[string]*truetype.Font
+var (
+	renderCache map[string]*image.RGBA
+	faceCache   map[string]*font.Face
+	fontCache   map[string]*truetype.Font
+)
 
-//Make a random picture to display.  Handy for debugging
+// Make a random picture to display.  Handy for debugging
 func RandPic(width, height int) []uint8 {
 	pic := make([]uint8, width*height*4)
-	for i, _ := range pic {
+	for i := range pic {
 		pic[i] = uint8(rand.Intn(256))
 	}
 	return pic
 }
 
-//Dump the rendercache, facecache and fontcache
+// Dump the rendercache, facecache and fontcache
 func ClearAllCaches() {
 	renderCache = map[string]*image.RGBA{}
 	faceCache = map[string]*font.Face{}
@@ -50,7 +52,7 @@ func ToChar(i int) rune {
 	return rune(i)
 }
 
-//Load a image from disk, return a byte array, width, height
+// Load a image from disk, return a byte array, width, height
 func LoadImage(path string) ([]byte, int, int) {
 	infile, _ := os.Open(path)
 	defer infile.Close()
@@ -175,17 +177,17 @@ func CalcDiffSq(renderPix, refImage []byte, width, height int) (int64, []byte) {
 	return diff, diffbuff
 }
 
-//Copies an image to a correctly-packed texture data array, where "correctly packed" means a byte array suitable for loading into OpenGL as a 32-bit RGBA byte blob
+// Copies an image to a correctly-packed texture data array, where "correctly packed" means a byte array suitable for loading into OpenGL as a 32-bit RGBA byte blob
 //
-//Other formats are not currently supported, patches welcome, etc
+// # Other formats are not currently supported, patches welcome, etc
 //
-//Returns the array, modified in place.  If u8Pix is nil or texWidth is 0, it creates a new texture array and returns that.  Texture is assumed to be square (this used to be required for OpenGL, not sure now?).
+// Returns the array, modified in place.  If u8Pix is nil or texWidth is 0, it creates a new texture array and returns that.  Texture is assumed to be square (this used to be required for OpenGL, not sure now?).
 func PaintTexture(img image.Image, u8Pix []uint8, clientWidth int) []uint8 {
 	out, _, _ := GFormatToImage(img, u8Pix, 0, 0)
 	return out
 }
 
-//Use width and height of 0 to use the image size
+// Use width and height of 0 to use the image size
 func GFormatToImage(img image.Image, u8Pix []uint8, clientWidth, clientHeight int) ([]uint8, int, int) {
 	bounds := img.Bounds()
 	newW := bounds.Max.X
@@ -219,7 +221,7 @@ func GFormatToImage(img image.Image, u8Pix []uint8, clientWidth, clientHeight in
 	return u8Pix, clientWidth, clientHeight
 }
 
-//Abs difference of two uint32 numbers
+// Abs difference of two uint32 numbers
 func udiff(a, b uint32) uint32 {
 	if a > b {
 		return a - b
@@ -228,11 +230,11 @@ func udiff(a, b uint32) uint32 {
 	}
 }
 
-//Returns a number representing the graphical difference between two images.
+// Returns a number representing the graphical difference between two images.
 //
-//This difference is calculated by comparing each pixel and summing the difference in colour
+// # This difference is calculated by comparing each pixel and summing the difference in colour
 //
-//This difference function is used in some other programs to power some approximation functions, it doesn't actually mean anything
+// This difference function is used in some other programs to power some approximation functions, it doesn't actually mean anything
 func GDiff(m, m1 image.Image) int64 {
 	bounds := m.Bounds()
 
@@ -271,14 +273,14 @@ func AbsInt(x int) int {
 	return x
 }
 
-//Dumps a go image format thing to disk
+// Dumps a go image format thing to disk
 func SaveImage(picture *image.RGBA, filename string) {
 	f, _ := os.OpenFile(filename, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0666)
 	defer f.Close()
 	png.Encode(f, picture)
 }
 
-//Converts an image to google's image format, RGBA type
+// Converts an image to google's image format, RGBA type
 func ImageToGFormat(texWidth, texHeight int, buff []byte) image.Image {
 	m := image.NewNRGBA(image.Rectangle{image.Point{0, 0}, image.Point{int(texWidth), int(texHeight)}})
 	if buff != nil {
@@ -292,7 +294,7 @@ func ImageToGFormat(texWidth, texHeight int, buff []byte) image.Image {
 	return m
 }
 
-//Converts an image to google's image format, NRGBA format
+// Converts an image to google's image format, NRGBA format
 func ImageToGFormatRGBA(texWidth, texHeight int, buff []byte) *image.RGBA {
 	m := image.NewRGBA(image.Rectangle{image.Point{0, 0}, image.Point{int(texWidth), int(texHeight)}})
 	if buff != nil {
@@ -306,20 +308,20 @@ func ImageToGFormatRGBA(texWidth, texHeight int, buff []byte) *image.RGBA {
 	return m
 }
 
-//Saves a 32 bit RGBA format byte array to a PNG file
+// Saves a 32 bit RGBA format byte array to a PNG file
 //
 // i.e. 1 byte for each R,B,G,A
 func SaveBuff(texWidth, texHeight int, buff []byte, filename string) {
 	m := image.NewNRGBA(image.Rectangle{image.Point{0, 0}, image.Point{int(texWidth), int(texHeight)}})
 	if buff != nil {
-		//log.Printf("Saving buffer: %v,%v", texWidth, texHeight)
+		// log.Printf("Saving buffer: %v,%v", texWidth, texHeight)
 		for y := 0; y < texHeight; y++ {
 			for x := 0; x < texWidth; x++ {
 				i := (x + y*texWidth) * 4
 				m.Set(int(x), int(texHeight-y), color.NRGBA{uint8(buff[i]), uint8(buff[i+1]), uint8(buff[i+2]), uint8(buff[i+3])})
-				//if buff[i]>0 { fmt.Printf("Found colour\n") }
-				//if buff[i+1]>0 { fmt.Printf("Found colour\n") }
-				//if buff[i+2]>0 { fmt.Printf("Found colour\n") }
+				// if buff[i]>0 { fmt.Printf("Found colour\n") }
+				// if buff[i+1]>0 { fmt.Printf("Found colour\n") }
+				// if buff[i+2]>0 { fmt.Printf("Found colour\n") }
 			}
 		}
 	}
@@ -333,15 +335,15 @@ func SaveBuff(texWidth, texHeight int, buff []byte, filename string) {
 
 var fname_int int
 
-//Prints the contents of a 32bit RGBA byte array as ASCII text
+// Prints the contents of a 32bit RGBA byte array as ASCII text
 //
-//For debugging.  Any pixel with a red value over 128 will be drawn as "I", otherwise "_"
+// For debugging.  Any pixel with a red value over 128 will be drawn as "I", otherwise "_"
 func DumpBuff(buff []uint8, width, height uint) {
 	log.Printf("Dumping buffer with width, height %v,%v\n", width, height)
 	for y := uint(0); y < height; y++ {
 		for x := uint(0); x < width; x++ {
 			i := (x + y*width) * 4
-			//log.Printf("Index: %v\n", i)
+			// log.Printf("Index: %v\n", i)
 			if buff[i] > 128 {
 				fmt.Printf("I")
 			} else {
@@ -352,30 +354,30 @@ func DumpBuff(buff []uint8, width, height uint) {
 	}
 }
 
-//Convert an array of uint8 to byte, because somehow golang manages to pack them differently in memeory
+// Convert an array of uint8 to byte, because somehow golang manages to pack them differently in memeory
 func Uint8ToBytes(in []uint8, out []byte) []byte {
-	//log.Println("Uint8ToBytes")
+	// log.Println("Uint8ToBytes")
 	if out == nil {
 		out = make([]byte, len(in))
 	}
 	for i, v := range in {
 		out[i] = v
 	}
-	//log.Println("Finished Uint8ToBytes")
+	// log.Println("Finished Uint8ToBytes")
 	return out
 }
 
-//Convert to go's image library color
+// Convert to go's image library color
 func RGBAtoColor(in RGBA) color.RGBA {
 	out := color.RGBA{in[0], in[1], in[2], in[3]}
 	return out
 }
 
-//Creates a texture and draws a string to it
+// Creates a texture and draws a string to it
 //
-//FIXME some fonts might not compeletely fit in the texture (usually the decorative ones which extend into another letter)
+// FIXME some fonts might not compeletely fit in the texture (usually the decorative ones which extend into another letter)
 func DrawStringRGBA(txtSize float64, fontColor RGBA, txt, fontfile string) (*image.RGBA, *font.Face) {
-	//log.Printf("Drawing text (%v), colour (%v), size(%v)\n", txt, fontColor, txtSize)
+	// log.Printf("Drawing text (%v), colour (%v), size(%v)\n", txt, fontColor, txtSize)
 	cacheKey := fmt.Sprintf("%v,%v,%v", txtSize, fontColor, txt)
 	if renderCache == nil {
 		renderCache = map[string]*image.RGBA{}
@@ -413,13 +415,13 @@ func DrawStringRGBA(txtSize float64, fontColor RGBA, txt, fontfile string) (*ima
 	targetWidth := d.MeasureString(txt).Ceil() * 2
 	targetHeight := int(txtSize) * 3
 	rect := image.Rect(0, 0, targetWidth, targetHeight)
-	//rect := image.Rect(0, 0, 30, 30)
+	// rect := image.Rect(0, 0, 30, 30)
 	rgba := image.NewRGBA(rect)
 	d.Dst = rgba
 
 	d.Dot = fixed.Point26_6{
 		X: fixed.I(Xadj),
-		Y: fixed.I(int(float32(targetHeight) * float32(1) / float32(2.5))), //fixed.I(rect.Max.Y/3), //rect.Max.Y*2/3), //FIXME
+		Y: fixed.I(int(float32(targetHeight) * float32(1) / float32(2.5))), // fixed.I(rect.Max.Y/3), //rect.Max.Y*2/3), //FIXME
 	}
 	d.DrawString(txt)
 	renderCache[cacheKey] = rgba
@@ -433,7 +435,7 @@ func DrawStringRGBA(txtSize float64, fontColor RGBA, txt, fontfile string) (*ima
 }
 
 func DrawGlyphRGBA(txtSize float64, fontColor RGBA, glyph rune, fontfile string) (*image.RGBA, *font.Face) {
-	//log.Printf("Drawing text (%v), colour (%v), size(%v)\n", glyph, fontColor, txtSize)
+	// log.Printf("Drawing text (%v), colour (%v), size(%v)\n", glyph, fontColor, txtSize)
 	cacheKey := fmt.Sprintf("%v,%v,%v", txtSize, fontColor, glyph)
 	if renderCache == nil {
 		renderCache = map[string]*image.RGBA{}
@@ -471,13 +473,13 @@ func DrawGlyphRGBA(txtSize float64, fontColor RGBA, glyph rune, fontfile string)
 	targetWidth := d.MeasureString(string(glyph)).Ceil() * 2
 	targetHeight := int(txtSize) * 3
 	rect := image.Rect(0, 0, targetWidth, targetHeight)
-	//rect := image.Rect(0, 0, 30, 30)
+	// rect := image.Rect(0, 0, 30, 30)
 	rgba := image.NewRGBA(rect)
 	d.Dst = rgba
 
 	d.Dot = fixed.Point26_6{
 		X: fixed.I(Xadj),
-		Y: fixed.I(int(float32(targetHeight) * float32(1) / float32(2.5))), //fixed.I(rect.Max.Y/3), //rect.Max.Y*2/3), //FIXME
+		Y: fixed.I(int(float32(targetHeight) * float32(1) / float32(2.5))), // fixed.I(rect.Max.Y/3), //rect.Max.Y*2/3), //FIXME
 	}
 	d.DrawString(string(glyph))
 	renderCache[cacheKey] = rgba
@@ -498,7 +500,7 @@ type Vec2 struct {
 	X, Y int
 }
 
-//Get the maximum pixel size needed to hold a string
+// Get the maximum pixel size needed to hold a string
 func GetGlyphSize(size float64, str string) (int, int) {
 	_, str_size := utf8.DecodeRuneInString(str)
 	img, _ := DrawStringRGBA(size, RGBA{1.0, 1.0, 1.0, 1.0}, str[0:str_size], "f1.ttf")
@@ -509,13 +511,13 @@ func GetGlyphSize(size float64, str string) (int, int) {
 	return XmaX, YmaX
 }
 
-//PasteBytes
+// PasteBytes
 //
 // Takes a bag of bytes, and some dimensions, and pastes it into another bag of bytes
 // It's the basic image combining routine
 func PasteBytes(srcWidth, srcHeight int, srcBytes []byte, xpos, ypos, dstWidth, dstHeight int, u8Pix []uint8, transparent, showBorder bool, copyAlpha bool) {
-	//log.Printf("Copying source image (%v,%v) into destination image (%v,%v) at point (%v, %v)\n", srcWidth, srcHeight, dstWidth, dstHeight, xpos, ypos)
-	bpp := 4 //bytes per pixel
+	// log.Printf("Copying source image (%v,%v) into destination image (%v,%v) at point (%v, %v)\n", srcWidth, srcHeight, dstWidth, dstHeight, xpos, ypos)
+	bpp := 4 // bytes per pixel
 
 	for i := 0; i < srcHeight; i++ {
 		if transparent {
@@ -551,7 +553,7 @@ func PasteBytes(srcWidth, srcHeight int, srcBytes []byte, xpos, ypos, dstWidth, 
 				u8Pix[dstOff+1] = outG
 				u8Pix[dstOff+2] = outB
 				u8Pix[dstOff+3] = byte(outA * 255)
-				if copyAlpha { //Needed because the default alpha is 0, which causes multiple pastes to fully overwrite the previous pastes
+				if copyAlpha { // Needed because the default alpha is 0, which causes multiple pastes to fully overwrite the previous pastes
 					if srcBytes[srcOff+3] > u8Pix[dstOff+3] {
 						u8Pix[dstOff+3] = srcBytes[srcOff+3]
 					}
@@ -567,17 +569,17 @@ func PasteBytes(srcWidth, srcHeight int, srcBytes []byte, xpos, ypos, dstWidth, 
 		} else {
 			srcOff := i * srcWidth * 4
 			dstOff := (ypos+i)*dstWidth*bpp + xpos*bpp
-			copy(u8Pix[dstOff:dstOff+4*srcWidth], srcBytes[srcOff:srcOff+4*srcWidth]) //FIXME move this outside the line loop so we can copy entire lines in one call
+			copy(u8Pix[dstOff:dstOff+4*srcWidth], srcBytes[srcOff:srcOff+4*srcWidth]) // FIXME move this outside the line loop so we can copy entire lines in one call
 		}
 	}
 }
 
-//Pastes a go format image into a bag of bytes image
+// Pastes a go format image into a bag of bytes image
 func PasteImg(img *image.RGBA, xpos, ypos, clientWidth, clientHeight int, u8Pix []uint8, transparent bool) {
 	po2 := int(MaxI(NextPo2(img.Bounds().Max.X), NextPo2(img.Bounds().Max.Y)))
-	//log.Printf("Chose texture size: %v\n", po2)
+	// log.Printf("Chose texture size: %v\n", po2)
 	wordBuff := PaintTexture(img, nil, po2)
-	bpp := int(4) //bytes per pixel
+	bpp := int(4) // bytes per pixel
 
 	h := img.Bounds().Max.Y
 	w := img.Bounds().Max.X
@@ -593,13 +595,13 @@ func PasteImg(img *image.RGBA, xpos, ypos, clientWidth, clientHeight int, u8Pix 
 	}
 }
 
-//Write some text into a bag of bytes image.
+// Write some text into a bag of bytes image.
 func PasteText(tSize float64, xpos, ypos, clientWidth, clientHeight int, text string, u8Pix []uint8, transparent bool) {
 	img, _ := DrawStringRGBA(tSize, RGBA{255, 255, 255, 255}, text, "f1.ttf")
 	po2 := int(MaxI(NextPo2(img.Bounds().Max.X), NextPo2(img.Bounds().Max.Y)))
-	//log.Printf("Chose texture size: %v\n", po2)
+	// log.Printf("Chose texture size: %v\n", po2)
 	wordBuff := PaintTexture(img, nil, po2)
-	bpp := int(4) //bytes per pixel
+	bpp := int(4) // bytes per pixel
 
 	h := img.Bounds().Max.Y
 	w := int(img.Bounds().Max.X)
@@ -615,13 +617,37 @@ func PasteText(tSize float64, xpos, ypos, clientWidth, clientHeight int, text st
 	}
 }
 
+// Draws a coloured box, does not merge with existing colour
+func DrawBox(xpos, ypos, width, height, clientWidth, clientHeight int, u8Pix []uint8, col color.RGBA) {
+	// log.Printf("Chose texture size: %v\n", po2)
+	bpp := int(4) // bytes per pixel
+
+	h := height
+	w := width
+	for i := int(0); i < int(h); i++ {
+		for j := int(0); j < w; j++ {
+			if (ypos+i)*clientWidth*bpp+int(xpos)*bpp+j*bpp > len(u8Pix) {
+				return
+			}
+			if xpos+j >= clientWidth || ypos+i >= clientHeight || xpos < 0 || ypos < 0 {
+				continue
+			}
+			u8Pix[(ypos+i)*clientWidth*bpp+int(xpos)*bpp+j*bpp] = col.R
+			u8Pix[(int(ypos)+i)*clientWidth*bpp+int(xpos)*bpp+j*bpp+1] = col.G
+			u8Pix[(int(ypos)+i)*clientWidth*bpp+int(xpos)*bpp+j*bpp+2] = col.B
+			u8Pix[(int(ypos)+i)*clientWidth*bpp+int(xpos)*bpp+j*bpp+3] = col.A
+
+		}
+	}
+}
+
 func NextPo2(n int) int {
 	return int(math.Pow(2, math.Ceil(math.Log2(float64(n)))))
 }
 
-//Rotate a 32bit byte array into a new byte array.  The target array will be created with the correct dimensions
+// Rotate a 32bit byte array into a new byte array.  The target array will be created with the correct dimensions
 func Rotate90(srcW, srcH int, src []byte) []byte {
-	//log.Printf("Rotating image (%v,%v)\n",srcW, srcH)
+	// log.Printf("Rotating image (%v,%v)\n",srcW, srcH)
 	dstW := srcH
 	dstH := srcW
 	dst := make([]byte, dstW*dstH*4)
@@ -629,7 +655,7 @@ func Rotate90(srcW, srcH int, src []byte) []byte {
 	for dstY := 0; dstY < dstH; dstY++ {
 		for dstX := 0; dstX < dstW; dstX++ {
 			srcX := dstY
-			//srcY := dstW - dstX - 1
+			// srcY := dstW - dstX - 1
 			srcY := dstX
 
 			srcOff := srcY*srcW*4 + srcX*4
@@ -642,20 +668,20 @@ func Rotate90(srcW, srcH int, src []byte) []byte {
 	return dst
 }
 
-//Rotate a 32bit byte array into a new byte array.  The target array will be created with the correct dimensions
+// Rotate a 32bit byte array into a new byte array.  The target array will be created with the correct dimensions
 func Rotate270(srcW, srcH int, src []byte) []byte {
-	//log.Printf("Rotating image (%v,%v)\n",srcW, srcH)
+	// log.Printf("Rotating image (%v,%v)\n",srcW, srcH)
 	dstW := srcH
 	dstH := srcW
 	dst := make([]byte, dstW*dstH*4)
 
 	for dstY := 0; dstY < dstH; dstY++ {
 		for dstX := 0; dstX < dstW; dstX++ {
-			//log.Printf("dstX: %v, dstY: %v\n", dstX, dstY)
-			//srcX := dstH - dstY  -1
+			// log.Printf("dstX: %v, dstY: %v\n", dstX, dstY)
+			// srcX := dstH - dstY  -1
 			srcX := dstY
 			srcY := dstW - dstX - 1
-			//srcY := dstX
+			// srcY := dstX
 
 			srcOff := srcY*srcW*4 + srcX*4
 			dstOff := dstY*dstW*4 + dstX*4
@@ -667,9 +693,9 @@ func Rotate270(srcW, srcH int, src []byte) []byte {
 	return dst
 }
 
-//Flips a 32bit byte array picture upside down.  Creates a target array with with the correct dimensions and returns it
+// Flips a 32bit byte array picture upside down.  Creates a target array with with the correct dimensions and returns it
 func FlipUp(srcW, srcH int, src []byte) []byte {
-	//log.Printf("Rotating image (%v,%v)\n",srcW, srcH)
+	// log.Printf("Rotating image (%v,%v)\n",srcW, srcH)
 	dstW := srcW
 	dstH := srcH
 	dst := make([]byte, dstW*dstH*4)
@@ -678,7 +704,7 @@ func FlipUp(srcW, srcH int, src []byte) []byte {
 		for dstX := 0; dstX < dstW; dstX++ {
 			srcX := dstX
 			srcY := dstH - dstY - 1
-			//srcY := dstX
+			// srcY := dstX
 
 			srcOff := srcY*srcW*4 + srcX*4
 			dstOff := dstY*dstW*4 + dstX*4
@@ -690,11 +716,11 @@ func FlipUp(srcW, srcH int, src []byte) []byte {
 	return dst
 }
 
-//Turn all pixels of a colour into transparent pixels
+// Turn all pixels of a colour into transparent pixels
 //
-//i.e. set the alpha to zero if the RGB matches the colour
+// i.e. set the alpha to zero if the RGB matches the colour
 //
-//The alpha value of the input colour is ignored
+// The alpha value of the input colour is ignored
 func MakeTransparent(m []byte, col color.RGBA) []byte {
 	for i := 0; i < len(m); i = i + 4 {
 		if m[i] == col.R ||
@@ -706,11 +732,11 @@ func MakeTransparent(m []byte, col color.RGBA) []byte {
 	return m
 }
 
-//Invert the colour of all pixels
+// Invert the colour of all pixels
 //
-//i.e. set each RGB channel to 255-n
+// i.e. set each RGB channel to 255-n
 //
-//The alpha value is inverted
+// The alpha value is inverted
 func Invert(m []byte) []byte {
 	for i := 0; i < len(m); i = i + 4 {
 		m[i] = 255 - m[i]
@@ -721,9 +747,9 @@ func Invert(m []byte) []byte {
 	return m
 }
 
-//Invert the alpha channel of all pixels
+// Invert the alpha channel of all pixels
 //
-//i.e. set  alpha channel to 255-n
+// i.e. set  alpha channel to 255-n
 func InvertAlpha(m []byte) []byte {
 	for i := 0; i < len(m); i = i + 4 {
 		m[i+3] = 255 - m[i+3]
@@ -731,9 +757,9 @@ func InvertAlpha(m []byte) []byte {
 	return m
 }
 
-//Invert the alpha channel of all pixels
+// Invert the alpha channel of all pixels
 //
-//i.e. set  alpha channel to 255-n
+// i.e. set  alpha channel to 255-n
 func ForceAlpha(m []byte, val uint8) []byte {
 	for i := 0; i < len(m); i = i + 4 {
 		m[i+3] = val
