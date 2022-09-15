@@ -524,6 +524,12 @@ func PasteBytes(srcWidth, srcHeight int, srcBytes []byte, xpos, ypos, dstWidth, 
 			for j := 0; j < srcWidth; j++ {
 				srcOff := i*srcWidth*4 + j*4
 				dstOff := (ypos+i)*dstWidth*bpp + xpos*bpp + j*bpp
+				if srcOff < 0 || dstOff < 0 {
+					continue
+				}
+				if srcOff >= len(srcBytes) || dstOff >= len(u8Pix) {
+					continue
+				}
 
 				r := srcBytes[srcOff+0]
 				g := srcBytes[srcOff+1]
@@ -569,6 +575,12 @@ func PasteBytes(srcWidth, srcHeight int, srcBytes []byte, xpos, ypos, dstWidth, 
 		} else {
 			srcOff := i * srcWidth * 4
 			dstOff := (ypos+i)*dstWidth*bpp + xpos*bpp
+			if srcOff < 0 || dstOff < 0 {
+				continue
+			}
+			if srcOff >= len(srcBytes) || dstOff >= len(u8Pix) {
+				continue
+			}
 			copy(u8Pix[dstOff:dstOff+4*srcWidth], srcBytes[srcOff:srcOff+4*srcWidth]) // FIXME move this outside the line loop so we can copy entire lines in one call
 		}
 	}
