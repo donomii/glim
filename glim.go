@@ -515,15 +515,23 @@ func GetGlyphSize(size float64, str string) (int, int) {
 //
 // Takes a bag of bytes, and some dimensions, and pastes it into another bag of bytes
 // It's the basic image combining routine
-func PasteBytes(srcWidth, srcHeight int, srcBytes []byte, xpos, ypos, dstWidth, dstHeight int, u8Pix []uint8, transparent, showBorder bool, copyAlpha bool) {
+func PasteBytes(srcWidth, srcHeight int, srcBytes []byte, start, ystart, dstWidth, dstHeight int, u8Pix []uint8, transparent, showBorder bool, copyAlpha bool) {
 	// log.Printf("Copying source image (%v,%v) into destination image (%v,%v) at point (%v, %v)\n", srcWidth, srcHeight, dstWidth, dstHeight, xpos, ypos)
 	bpp := 4 // bytes per pixel
 
 	for i := 0; i < srcHeight; i++ {
 		if transparent {
 			for j := 0; j < srcWidth; j++ {
+				y:= ystart+i
+				x:= start+j
+				if y >= dstHeight || x >= dstWidth {
+					continue
+				}
+				if x < 0 || y < 0 {
+					continue
+				}
 				srcOff := i*srcWidth*4 + j*4
-				dstOff := (ypos+i)*dstWidth*bpp + xpos*bpp + j*bpp
+				dstOff := (ystart+i)*dstWidth*bpp + start*bpp + j*bpp
 				if srcOff < 0 || dstOff < 0 {
 					continue
 				}
@@ -574,7 +582,7 @@ func PasteBytes(srcWidth, srcHeight int, srcBytes []byte, xpos, ypos, dstWidth, 
 			}
 		} else {
 			srcOff := i * srcWidth * 4
-			dstOff := (ypos+i)*dstWidth*bpp + xpos*bpp
+			dstOff := (ystart+i)*dstWidth*bpp + start*bpp
 			if srcOff < 0 || dstOff < 0 {
 				continue
 			}
@@ -587,7 +595,7 @@ func PasteBytes(srcWidth, srcHeight int, srcBytes []byte, xpos, ypos, dstWidth, 
 }
 
 // Pastes a go format image into a bag of bytes image
-func PasteImg(img *image.RGBA, xpos, ypos, clientWidth, clientHeight int, u8Pix []uint8, transparent bool) {
+func PasteImg(img *image.RGBA, xstart, ystart, clientWidth, clientHeight int, u8Pix []uint8, transparent bool) {
 	po2 := int(MaxI(NextPo2(img.Bounds().Max.X), NextPo2(img.Bounds().Max.Y)))
 	// log.Printf("Chose texture size: %v\n", po2)
 	wordBuff := PaintTexture(img, nil, po2)
@@ -597,11 +605,16 @@ func PasteImg(img *image.RGBA, xpos, ypos, clientWidth, clientHeight int, u8Pix 
 	w := img.Bounds().Max.X
 	for i := int(0); i < int(h); i++ {
 		for j := int(0); j < w; j++ {
+			xpos := xstart + j
+			ypos := (ystart + i) * clientWidth
+			if xpos > clientWidth || ypos > clientHeight {
+				continue
+			}
 			if (wordBuff[i*po2*4+j*4] > 128) || !transparent {
-				u8Pix[(ypos+i)*clientWidth*bpp+int(xpos)*bpp+j*bpp] = wordBuff[i*po2*4+j*4]
-				u8Pix[(int(ypos)+i)*clientWidth*bpp+int(xpos)*bpp+j*bpp+1] = wordBuff[i*po2*4+j*4+1]
-				u8Pix[(int(ypos)+i)*clientWidth*bpp+int(xpos)*bpp+j*bpp+2] = wordBuff[i*po2*4+j*4+2]
-				u8Pix[(int(ypos)+i)*clientWidth*bpp+int(xpos)*bpp+j*bpp+3] = wordBuff[i*po2*4+j*4+3]
+				u8Pix[(ystart+i)*clientWidth*bpp+int(xstart)*bpp+j*bpp] = wordBuff[i*po2*4+j*4]
+				u8Pix[(int(ystart)+i)*clientWidth*bpp+int(xstart)*bpp+j*bpp+1] = wordBuff[i*po2*4+j*4+1]
+				u8Pix[(int(ystart)+i)*clientWidth*bpp+int(xstart)*bpp+j*bpp+2] = wordBuff[i*po2*4+j*4+2]
+				u8Pix[(int(ystart)+i)*clientWidth*bpp+int(xstart)*bpp+j*bpp+3] = wordBuff[i*po2*4+j*4+3]
 			}
 		}
 	}
