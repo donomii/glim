@@ -55,6 +55,43 @@ func DrawCursor(xpos, ypos, height, pixWidth int, u8Pix []byte, cursorColour *RG
 	}
 }
 
+// FillRect draws a solid rectangle into the pixel buffer.
+func FillRect(x, y, w, h, pixWidth, pixHeight int, u8Pix []byte, colour *RGBA) {
+	if colour == nil || w <= 0 || h <= 0 || pixWidth <= 0 || pixHeight <= 0 {
+		return
+	}
+	if x < 0 {
+		w += x
+		x = 0
+	}
+	if y < 0 {
+		h += y
+		y = 0
+	}
+	if x+w > pixWidth {
+		w = pixWidth - x
+	}
+	if y+h > pixHeight {
+		h = pixHeight - y
+	}
+	if w <= 0 || h <= 0 {
+		return
+	}
+	colourVal := *colour
+	r, g, b, a := colourVal[0], colourVal[1], colourVal[2], colourVal[3]
+	stride := pixWidth * 4
+	for yy := 0; yy < h; yy++ {
+		offset := (y+yy)*stride + x*4
+		for xx := 0; xx < w; xx++ {
+			u8Pix[offset] = r
+			u8Pix[offset+1] = g
+			u8Pix[offset+2] = b
+			u8Pix[offset+3] = a
+			offset += 4
+		}
+	}
+}
+
 // Check and correct formatparams to make sure e.g. cursor is always on the screen
 func SanityCheck(f *FormatParams, txt string) {
 	log.Println("Sanity check")
@@ -167,6 +204,12 @@ func RenderTokenPara(f *FormatParams, xpos, ypos, minX, minY, maxX, maxY, pixWid
 	cursorDist := 9999999
 	seekCursorPos := 0
 	vert := f.Vertical
+	selStart := f.SelectStart
+	selEnd := f.SelectEnd
+	hasSelection := selStart >= 0 && selEnd >= 0 && selStart != selEnd
+	if hasSelection && selStart > selEnd {
+		selStart, selEnd = selEnd, selStart
+	}
 	// selectColour := color.RGBA{255, 1, 1, 255}
 	// highlightColour := color.RGBA{1, 255, 1, 255}
 	// colSwitch := false
@@ -262,6 +305,10 @@ func RenderTokenPara(f *FormatParams, xpos, ypos, minX, minY, maxX, maxY, pixWid
 				if wobblyMode {
 					ytweak = int(math.Sin(float64(xpos)) * 5.0)
 				}
+				selected := hasSelection && i >= selStart && i <= selEnd
+				if selected && f.SelectColour != nil {
+					foreGround = f.SelectColour
+				}
 				img, face := DrawStringRGBA(f.FontSize, *foreGround, v, "f1.ttf")
 				XmaX, YmaX := img.Bounds().Max.X, img.Bounds().Max.Y
 				imgBytes := img.Pix
@@ -315,6 +362,19 @@ func RenderTokenPara(f *FormatParams, xpos, ypos, minX, minY, maxX, maxY, pixWid
 				xpos = pos.X
 				ypos = pos.Y
 
+				if selected {
+					if doDraw {
+						fillW := letterWidth
+						fillH := letterHeight
+						if fillW <= 0 {
+							fillW = gx
+						}
+						if fillH <= 0 {
+							fillH = gy
+						}
+						FillRect(xpos, ypos, fillW, fillH, pixWidth, pixHeight, u8Pix, f.HighlightColour)
+					}
+				}
 				if doDraw {
 					// PasteImg(img, xpos, ypos + ytweak, u8Pix, transparent)
 					// PasteBytes(XmaX, YmaX, imgBytes, xpos, ypos+ytweak, int(pixWidth), int(pixHeight), u8Pix, transparent)
