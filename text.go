@@ -204,6 +204,7 @@ func RenderTokenPara(f *FormatParams, xpos, ypos, minX, minY, maxX, maxY, pixWid
 	cursorDist := 9999999
 	seekCursorPos := 0
 	vert := f.Vertical
+	hitFound := false
 	selStart := f.SelectStart
 	selEnd := f.SelectEnd
 	hasSelection := selStart >= 0 && selEnd >= 0 && selStart != selEnd
@@ -362,6 +363,21 @@ func RenderTokenPara(f *FormatParams, xpos, ypos, minX, minY, maxX, maxY, pixWid
 				xpos = pos.X
 				ypos = pos.Y
 
+				if !hitFound {
+					hitW := letterWidth
+					hitH := letterHeight
+					if hitW <= 0 {
+						hitW = gx
+					}
+					if hitH <= 0 {
+						hitH = gy
+					}
+					if cursorX >= xpos && cursorX < xpos+hitW && cursorY >= ypos && cursorY < ypos+hitH {
+						seekCursorPos = i
+						hitFound = true
+					}
+				}
+
 				if selected {
 					if doDraw {
 						fillW := letterWidth
@@ -395,10 +411,12 @@ func RenderTokenPara(f *FormatParams, xpos, ypos, minX, minY, maxX, maxY, pixWid
 				}
 			}
 		}
-		d := (cursorX-xpos+letterWidth)*(cursorX-xpos+letterWidth) + (cursorY-ypos-maxHeight/2)*(cursorY-ypos-maxHeight/2)
-		if d < cursorDist {
-			cursorDist = d
-			seekCursorPos = i
+		if !hitFound {
+			d := (cursorX-xpos+letterWidth)*(cursorX-xpos+letterWidth) + (cursorY-ypos-maxHeight/2)*(cursorY-ypos-maxHeight/2)
+			if d < cursorDist {
+				cursorDist = d
+				seekCursorPos = i
+			}
 		}
 
 	}
